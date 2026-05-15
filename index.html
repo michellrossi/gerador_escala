@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escala de Fiscais de Posturas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  :root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f5f4f0;
+    --color-bg-tertiary: #ebebeb;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #6b6b67;
+    --color-border: rgba(0,0,0,0.12);
+    --color-border-md: rgba(0,0,0,0.22);
+    --color-blue-bg: #E6F1FB;
+    --color-blue-text: #185FA5;
+    --color-amber-bg: #FAEEDA;
+    --color-amber-text: #633806;
+    --color-red-bg: #FCEBEB;
+    --color-red-text: #791F1F;
+    --color-teal-bg: #E1F5EE;
+    --color-teal-text: #085041;
+    --color-purple-bg: #EEEDFE;
+    --color-purple-text: #3C3489;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg-primary: #1c1c1a;
+      --color-bg-secondary: #252523;
+      --color-bg-tertiary: #2e2e2c;
+      --color-text-primary: #f0efe8;
+      --color-text-secondary: #a0a09a;
+      --color-border: rgba(255,255,255,0.1);
+      --color-border-md: rgba(255,255,255,0.2);
+      --color-blue-bg: #0c447c;
+      --color-blue-text: #B5D4F4;
+      --color-amber-bg: #633806;
+      --color-amber-text: #FAC775;
+      --color-red-bg: #501313;
+      --color-red-text: #F7C1C1;
+      --color-teal-bg: #085041;
+      --color-teal-text: #9FE1CB;
+      --color-purple-bg: #3C3489;
+      --color-purple-text: #CECBF6;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--color-bg-primary);
+    border-bottom: 0.5px solid var(--color-border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 17px; font-weight: 500; }
+  header p { font-size: 13px; color: var(--color-text-secondary); }
+  .container { max-width: 860px; margin: 0 auto; padding: 1.5rem; }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1.5rem;
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--color-border);
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .tab.active {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+  .tab:hover:not(.active) { background: var(--color-bg-secondary); }
+  .page { display: none; }
+  .page.active { display: block; }
+  .card {
+    background: var(--color-bg-primary);
+    border: 0.5px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 10px;
+  }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+  .metric-card {
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    padding: .875rem 1rem;
+  }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .metric-value { font-size: 24px; font-weight: 500; }
+  .metric-sub { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+  }
+  .badge-leve { background: var(--color-teal-bg); color: var(--color-teal-text); }
+  .badge-medio { background: var(--color-amber-bg); color: var(--color-amber-text); }
+  .badge-pesado { background: var(--color-red-bg); color: var(--color-red-text); }
+  .badge-ferias { background: var(--color-amber-bg); color: var(--color-amber-text); }
+  .postura-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--color-border);
+  }
+  .postura-row:last-child { border-bottom: none; }
+  .postura-nome { flex: 1; font-size: 14px; }
+  .postura-peso { font-size: 13px; color: var(--color-text-secondary); min-width: 40px; text-align: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-leve { background: #1D9E75; }
+  .dot-medio { background: #BA7517; }
+  .dot-pesado { background: #E24B4A; }
+  .fiscal-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--color-border);
+  }
+  .fiscal-item:last-child { border-bottom: none; }
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-blue-bg);
+    color: var(--color-blue-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .fiscal-nome { flex: 1; font-size: 14px; }
+  .carga-bar-wrap {
+    width: 80px;
+    height: 6px;
+    background: var(--color-bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .carga-bar { height: 100%; border-radius: 3px; }
+  .carga-label { font-size: 12px; color: var(--color-text-secondary); min-width: 28px; text-align: right; }
+  .row-actions { display: flex; gap: 6px; }
+  .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 0.5px solid var(--color-border-md);
+    border-radius: var(--radius-md);
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn:hover { background: var(--color-bg-secondary); }
+  .btn-primary {
+    background: var(--color-text-primary);
+    color: var(--color-bg-primary);
+    border-color: var(--color-text-primary);
+  }
+  .btn-primary:hover { opacity: .85; background: var(--color-text-primary); }
+  .btn-danger { border-color: #E24B4A; color: #E24B4A; }
+  .btn-danger:hover { background: var(--color-red-bg); }
+  .btn-sm { padding: 4px 8px; font-size: 12px; }
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .input-row label { font-size: 13px; color: var(--color-text-secondary); min-width: 90px; }
+  .input-row input,
+  .input-row select {
+    flex: 1;
+    font-size: 13px;
+    padding: 7px 10px;
+    border: 0.5px solid var(--color-border-md);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+  }
+  .top-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 8px;
+    border-bottom: 0.5px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: 12px;
+  }
+  td { padding: 8px 8px; border-bottom: 0.5px solid var(--color-border); }
+  tr:last-child td { border-bottom: none; }
+  .turno-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+  }
+  .turno-D { background: var(--color-blue-bg); color: var(--color-blue-text); }
+  .turno-N { background: var(--color-purple-bg); color: var(--color-purple-text); }
+  .alert {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .alert-info {
+    background: var(--color-blue-bg);
+    color: var(--color-blue-text);
+    border-left: 3px solid var(--color-blue-text);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .alert-success {
+    background: var(--color-teal-bg);
+    color: var(--color-teal-text);
+    border-left: 3px solid var(--color-teal-text);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .progresso-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .progresso-nome { min-width: 130px; color: var(--color-text-primary); font-size: 13px; }
+  .progresso-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--color-bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progresso-bar { height: 100%; border-radius: 4px; }
+  .progresso-val { min-width: 32px; text-align: right; font-size: 12px; color: var(--color-text-secondary); }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--color-border);
+    padding: 1.5rem;
+    width: 360px;
+    max-width: 95vw;
+  }
+  .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 1.25rem; }
+  .flex-end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1rem; }
+  .empty-state { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 14px; }
+  @media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .tab span { display: none; }
+    .progresso-nome { min-width: 90px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1><i class="ti ti-shield-check" style="color:#185FA5;margin-right:6px"></i>Escala de Fiscais de Posturas</h1>
+    <p>Prefeitura de São Paulo — Distribuição justa de comandos</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="goTab('visao',this)">
+      <i class="ti ti-layout-dashboard"></i><span>Visão geral</span>
+    </button>
+    <button class="tab" onclick="goTab('fiscais',this)">
+      <i class="ti ti-users"></i><span>Fiscais</span>
+    </button>
+    <button class="tab" onclick="goTab('escala',this)">
+      <i class="ti ti-calendar"></i><span>Gerar escala</span>
+    </button>
+    <button class="tab" onclick="goTab('historico',this)">
+      <i class="ti ti-chart-bar"></i><span>Histórico</span>
+    </button>
+  </div>
+
+  <!-- VISÃO GERAL -->
+  <div class="page active" id="tab-visao">
+    <div class="grid-3" id="metricas"></div>
+    <div class="card">
+      <div class="section-title">Posturas e pesos</div>
+      <div id="posturas-list"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Distribuição de carga acumulada</div>
+      <div id="carga-progresso"></div>
+    </div>
+  </div>
+
+  <!-- FISCAIS -->
+  <div class="page" id="tab-fiscais">
+    <div class="top-actions">
+      <div class="section-title" style="margin:0">Lista de fiscais</div>
+      <button class="btn" onclick="abrirModalFiscal()">
+        <i class="ti ti-plus"></i> Adicionar fiscal
+      </button>
+    </div>
+    <div class="card">
+      <ul style="list-style:none" id="fiscal-list"></ul>
+    </div>
+  </div>
+
+  <!-- GERAR ESCALA -->
+  <div class="page" id="tab-escala">
+    <div class="card">
+      <div class="section-title">Parâmetros do comando</div>
+      <div class="input-row">
+        <label>Turno</label>
+        <select id="sel-turno">
+          <option value="D">Diurno</option>
+          <option value="N">Noturno</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <label>Postura</label>
+        <select id="sel-postura"></select>
+      </div>
+      <div class="input-row">
+        <label>Data</label>
+        <input type="date" id="sel-data">
+      </div>
+      <div class="input-row">
+        <label>Nº de fiscais</label>
+        <input type="number" id="sel-qtd" min="1" max="15" value="3">
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" onclick="gerarEscala()">
+          <i class="ti ti-wand"></i> Gerar escala justa
+        </button>
+      </div>
+    </div>
+    <div id="escala-resultado"></div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="page" id="tab-historico">
+    <div class="top-actions">
+      <div class="section-title" style="margin:0">Comandos registrados</div>
+      <button class="btn btn-danger" onclick="limparHistorico()">
+        <i class="ti ti-trash"></i> Limpar histórico
+      </button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Turno</th>
+            <th>Postura</th>
+            <th>Peso</th>
+            <th>Fiscais escalados</th>
+          </tr>
+        </thead>
+        <tbody id="historico-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-fiscal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Adicionar fiscal</div>
+    <div class="input-row">
+      <label>Nome</label>
+      <input type="text" id="input-nome" placeholder="Nome completo">
+    </div>
+    <div class="input-row">
+      <label>Status</label>
+      <select id="input-status">
+        <option value="ativo">Ativo</option>
+        <option value="ferias">Férias</option>
+      </select>
+    </div>
+    <div class="flex-end">
+      <button class="btn" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarFiscal()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const POSTURAS = [
+  { id: 'AVA', nome: 'Apreensão de veículos abandonados', peso: 1, nivel: 'leve' },
+  { id: 'FL',  nome: 'Feira livre',                        peso: 3, nivel: 'pesado' },
+  { id: 'AMB', nome: 'Ambulantes',                         peso: 3, nivel: 'pesado' },
+  { id: 'F1H', nome: 'Funcionamento após 1h',              peso: 3, nivel: 'pesado' },
+  { id: 'AD',  nome: 'Atividade (8h–19h)',                 peso: 1, nivel: 'leve' },
+  { id: 'AN',  nome: 'Atividade (após 19h)',               peso: 2, nivel: 'medio' },
+];
+
+const NOMES_INICIAIS = [
+  'Ana Lima','Bruno Costa','Carlos Melo','Daniela Souza','Eduardo Nunes',
+  'Fernanda Rocha','Gabriel Pinto','Helena Ferreira','Igor Martins','Juliana Alves',
+  'Klaus Barbosa','Larissa Gomes','Marcos Freitas','Natalia Cunha','Oscar Teixeira'
+];
+
+let fiscais = [], historico = [], editId = null;
+
+function ls(k, v) {
+  try {
+    if (v === undefined) return JSON.parse(localStorage.getItem('fp_' + k) || 'null');
+    localStorage.setItem('fp_' + k, JSON.stringify(v));
+  } catch(e) { return null; }
+}
+
+function load() {
+  fiscais = ls('fiscais') || NOMES_INICIAIS.map((n, i) => ({
+    id: i + 1, nome: n, status: 'ativo', cargaTotal: 0, comandos: []
+  }));
+  historico = ls('historico') || [];
+}
+
+function save() { ls('fiscais', fiscais); ls('historico', historico); }
+
+function siglas(nome) {
+  return nome.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+}
+
+function maxCarga() {
+  return Math.max(1, ...fiscais.map(f => f.cargaTotal || 0));
+}
+
+function renderPosturas() {
+  document.getElementById('posturas-list').innerHTML = POSTURAS.map(p => `
+    <div class="postura-row">
+      <div class="dot dot-${p.nivel}"></div>
+      <span class="postura-nome">${p.nome}</span>
+      <span class="badge badge-${p.nivel}">${p.nivel}</span>
+      <span class="postura-peso">peso ${p.peso}</span>
+    </div>`).join('');
+}
+
+function renderCargaProgresso() {
+  const max = maxCarga();
+  const sorted = [...fiscais].sort((a, b) => (b.cargaTotal || 0) - (a.cargaTotal || 0));
+  document.getElementById('carga-progresso').innerHTML = sorted.map(f => {
+    const pct = Math.round(((f.cargaTotal || 0) / max) * 100);
+    const cor = f.status === 'ferias' ? '#888780' : '#378ADD';
+    const nome = f.nome.split(' ');
+    const nomeExib = nome[0] + (nome.length > 1 ? ' ' + nome[nome.length - 1] : '');
+    return `
+      <div class="progresso-row">
+        <span class="progresso-nome">${nomeExib}</span>
+        <div class="progresso-bar-bg">
+          <div class="progresso-bar" style="width:${pct}%;background:${cor}"></div>
+        </div>
+        <span class="progresso-val">${f.cargaTotal || 0}</span>
+        ${f.status === 'ferias' ? '<span class="badge badge-ferias">férias</span>' : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderMetricas() {
+  const ativos = fiscais.filter(f => f.status === 'ativo').length;
+  const ferias = fiscais.filter(f => f.status === 'ferias').length;
+  document.getElementById('metricas').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Fiscais ativos</div>
+      <div class="metric-value">${ativos}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Em férias</div>
+      <div class="metric-value">${ferias}</div>
+      <div class="metric-sub">prioridade ao retornar</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Comandos registrados</div>
+      <div class="metric-value">${historico.length}</div>
+    </div>`;
+}
+
+function renderFiscais() {
+  const max = maxCarga();
+  document.getElementById('fiscal-list').innerHTML = fiscais.map(f => {
+    const pct = Math.round(((f.cargaTotal || 0) / max) * 100);
+    const cor = f.status === 'ferias' ? '#888780' : '#378ADD';
+    return `
+      <li class="fiscal-item">
+        <div class="avatar">${siglas(f.nome)}</div>
+        <span class="fiscal-nome">
+          ${f.nome}
+          ${f.status === 'ferias' ? ' <span class="badge badge-ferias">férias</span>' : ''}
+        </span>
+        <div class="carga-bar-wrap">
+          <div class="carga-bar" style="width:${pct}%;background:${cor}"></div>
+        </div>
+        <span class="carga-label">${f.cargaTotal || 0}</span>
+        <div class="row-actions">
+          <button class="btn btn-sm" onclick="toggleFerias(${f.id})">
+            ${f.status === 'ferias' ? 'Retornar' : 'Férias'}
+          </button>
+          <button class="btn btn-sm" onclick="editarFiscal(${f.id})" title="Editar">
+            <i class="ti ti-edit"></i>
+          </button>
+        </div>
+      </li>`;
+  }).join('');
+}
+
+function renderSelectPostura() {
+  document.getElementById('sel-postura').innerHTML = POSTURAS.map(p =>
+    `<option value="${p.id}">${p.nome} (${p.nivel})</option>`
+  ).join('');
+}
+
+function renderHistorico() {
+  const tbody = document.getElementById('historico-body');
+  if (!historico.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum comando registrado ainda</td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...historico].reverse().map(h => `
+    <tr>
+      <td>${h.data}</td>
+      <td><span class="turno-tag turno-${h.turno}">${h.turno === 'D' ? 'Diurno' : 'Noturno'}</span></td>
+      <td>${h.posturaNome}</td>
+      <td><span class="badge badge-${h.nivel}">${h.nivel} · ${h.peso}</span></td>
+      <td>${h.fiscais.join(', ')}</td>
+    </tr>`).join('');
+}
+
+function escalarFiscais(qtd) {
+  const fEmFerias = fiscais.filter(f => f.status === 'ferias');
+  const fAtivos = [...fiscais.filter(f => f.status === 'ativo')]
+    .sort((a, b) => (a.cargaTotal || 0) - (b.cargaTotal || 0));
+  const resultado = [];
+  for (const f of fEmFerias) { if (resultado.length < qtd) resultado.push(f); }
+  for (const f of fAtivos)   { if (resultado.length >= qtd) break; resultado.push(f); }
+  return resultado;
+}
+
+function gerarEscala() {
+  const turno = document.getElementById('sel-turno').value;
+  const posturaId = document.getElementById('sel-postura').value;
+  const data = document.getElementById('sel-data').value;
+  const qtd = parseInt(document.getElementById('sel-qtd').value) || 3;
+  if (!data) { alert('Selecione uma data.'); return; }
+  const postura = POSTURAS.find(p => p.id === posturaId);
+  const escalados = escalarFiscais(qtd);
+  const fEmFerias = fiscais.filter(f => f.status === 'ferias');
+  const aviso = fEmFerias.length > 0
+    ? `<div class="alert alert-info"><i class="ti ti-info-circle"></i> ${fEmFerias.length} fiscal(is) em férias encabeçam a lista e serão escalados com prioridade ao retornar.</div>`
+    : '';
+  const ids = escalados.map(f => f.id);
+  document.getElementById('escala-resultado').innerHTML = `
+    <div class="card">
+      <div class="section-title">Sugestão — ${postura.nome} · ${turno === 'D' ? 'Diurno' : 'Noturno'} · ${data}</div>
+      ${aviso}
+      <table>
+        <thead><tr><th>#</th><th>Fiscal</th><th>Carga atual</th><th>Motivo</th></tr></thead>
+        <tbody>
+          ${escalados.map((f, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div class="avatar" style="width:26px;height:26px;font-size:10px">${siglas(f.nome)}</div>
+                  ${f.nome}
+                </div>
+              </td>
+              <td>${f.cargaTotal || 0}</td>
+              <td style="color:var(--color-text-secondary);font-size:12px">
+                ${f.status === 'ferias'
+                  ? '<span class="badge badge-ferias">retorno de férias</span>'
+                  : 'menor carga acumulada'}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-primary" onclick="confirmarEscala('${posturaId}','${turno}','${data}',${JSON.stringify(ids)})">
+          <i class="ti ti-check"></i> Confirmar e registrar
+        </button>
+      </div>
+    </div>`;
+}
+
+function confirmarEscala(posturaId, turno, data, ids) {
+  const postura = POSTURAS.find(p => p.id === posturaId);
+  const escalados = fiscais.filter(f => ids.includes(f.id));
+  escalados.forEach(f => {
+    f.cargaTotal = (f.cargaTotal || 0) + postura.peso;
+    f.comandos = f.comandos || [];
+    f.comandos.push({ data, turno, posturaId, peso: postura.peso });
+    if (f.status === 'ferias') f.status = 'ativo';
+  });
+  historico.push({
+    data, turno,
+    posturaNome: postura.nome,
+    nivel: postura.nivel,
+    peso: postura.peso,
+    fiscais: escalados.map(f => f.nome.split(' ')[0])
+  });
+  save();
+  renderAll();
+  document.getElementById('escala-resultado').innerHTML =
+    `<div class="alert alert-success"><i class="ti ti-check"></i> Escala confirmada! Carga dos fiscais atualizada com sucesso.</div>`;
+}
+
+function toggleFerias(id) {
+  const f = fiscais.find(x => x.id === id);
+  if (!f) return;
+  f.status = f.status === 'ferias' ? 'ativo' : 'ferias';
+  save(); renderAll();
+}
+
+function abrirModalFiscal() {
+  editId = null;
+  document.getElementById('input-nome').value = '';
+  document.getElementById('input-status').value = 'ativo';
+  document.getElementById('modal-title').textContent = 'Adicionar fiscal';
+  document.getElementById('modal-fiscal').classList.add('open');
+}
+
+function editarFiscal(id) {
+  const f = fiscais.find(x => x.id === id);
+  if (!f) return;
+  editId = id;
+  document.getElementById('input-nome').value = f.nome;
+  document.getElementById('input-status').value = f.status;
+  document.getElementById('modal-title').textContent = 'Editar fiscal';
+  document.getElementById('modal-fiscal').classList.add('open');
+}
+
+function fecharModal() { document.getElementById('modal-fiscal').classList.remove('open'); }
+
+function salvarFiscal() {
+  const nome = document.getElementById('input-nome').value.trim();
+  const status = document.getElementById('input-status').value;
+  if (!nome) return;
+  if (editId) {
+    const f = fiscais.find(x => x.id === editId);
+    if (f) { f.nome = nome; f.status = status; }
+  } else {
+    const newId = Math.max(0, ...fiscais.map(f => f.id)) + 1;
+    fiscais.push({ id: newId, nome, status, cargaTotal: 0, comandos: [] });
+  }
+  fecharModal(); save(); renderAll();
+}
+
+function limparHistorico() {
+  if (!confirm('Limpar todo o histórico e zerar cargas? Esta ação não pode ser desfeita.')) return;
+  historico = [];
+  fiscais.forEach(f => { f.cargaTotal = 0; f.comandos = []; });
+  save(); renderAll();
+}
+
+function goTab(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function renderAll() {
+  renderPosturas();
+  renderCargaProgresso();
+  renderMetricas();
+  renderFiscais();
+  renderHistorico();
+}
+
+document.getElementById('sel-data').value = new Date().toISOString().slice(0, 10);
+load();
+renderAll();
+renderSelectPostura();
+</script>
+</body>
+</html>
