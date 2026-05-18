@@ -57,21 +57,21 @@ const POSTURAS = [
 ];
 
 const FISCAIS_INICIAIS_SEMENTE = [
-  { id: '1', nome: 'Daviceli S. Cirino', rf: '6802796', status: 'Ativo', ultimaEscala: null, ordem: 0 },
-  { id: '2', nome: 'Lizandra Barros Souza', rf: '7056702', status: 'Ativo', ultimaEscala: null, ordem: 1 },
-  { id: '3', nome: 'Marcelo Makibara', rf: '7256787', status: 'Ativo', ultimaEscala: null, ordem: 2 },
-  { id: '4', nome: 'Carlos Alberto Vannucchi Pachá', rf: '7330871', status: 'Ativo', ultimaEscala: null, ordem: 3 },
-  { id: '5', nome: 'Amanda Melzi Costa', rf: '8982392', status: 'Ativo', ultimaEscala: null, ordem: 4 },
-  { id: '6', nome: 'Samara Rodrigues de Paula', rf: '9152075', status: 'Ativo', ultimaEscala: null, ordem: 5 },
-  { id: '7', nome: 'Bia R. Ribeiro', rf: '9387838', status: 'Ativo', ultimaEscala: null, ordem: 6 },
-  { id: '8', nome: 'Fernanda Mendes dos Santos', rf: '9388753', status: 'Ativo', ultimaEscala: null, ordem: 7 },
-  { id: '9', nome: 'Felipe Soares Santos', rf: '9389016', status: 'Ativo', ultimaEscala: null, ordem: 8 },
-  { id: '10', nome: 'Fabíola Ruiz', rf: '9390651', status: 'Ativo', ultimaEscala: null, ordem: 9 },
-  { id: '11', nome: 'Caroline Barbosa Paliarussi', rf: '9399208', status: 'Ativo', ultimaEscala: null, ordem: 10 },
-  { id: '12', nome: 'Michell D. Rossi', rf: '9399640', status: 'Ativo', ultimaEscala: null, ordem: 11 },
-  { id: '13', nome: 'Drailton José de Santana', rf: '9535241', status: 'Ativo', ultimaEscala: null, ordem: 12 },
-  { id: '14', nome: 'Gabriel Guerrero', rf: '9535501', status: 'Ativo', ultimaEscala: null, ordem: 13 },
-  { id: '15', nome: 'Giancarlo Soares Ferreira', rf: '9535624', status: 'Ativo', ultimaEscala: null, ordem: 14 },
+  { id: '1', nome: 'Daviceli S. Cirino', rf: '6802796', status: 'Ativo', ordem: 0 },
+  { id: '2', nome: 'Lizandra Barros Souza', rf: '7056702', status: 'Ativo', ordem: 1 },
+  { id: '3', nome: 'Marcelo Makibara', rf: '7256787', status: 'Ativo', ordem: 2 },
+  { id: '4', nome: 'Carlos Alberto Vannucchi Pachá', rf: '7330871', status: 'Ativo', ordem: 3 },
+  { id: '5', nome: 'Amanda Melzi Costa', rf: '8982392', status: 'Ativo', ordem: 4 },
+  { id: '6', nome: 'Samara Rodrigues de Paula', rf: '9152075', status: 'Ativo', ordem: 5 },
+  { id: '7', nome: 'Bia R. Ribeiro', rf: '9387838', status: 'Ativo', ordem: 6 },
+  { id: '8', nome: 'Fernanda Mendes dos Santos', rf: '9388753', status: 'Ativo', ordem: 7 },
+  { id: '9', nome: 'Felipe Soares Santos', rf: '9389016', status: 'Ativo', ordem: 8 },
+  { id: '10', nome: 'Fabíola Ruiz', rf: '9390651', status: 'Ativo', ordem: 9 },
+  { id: '11', nome: 'Caroline Barbosa Paliarussi', rf: '9399208', status: 'Ativo', ordem: 10 },
+  { id: '12', nome: 'Michell D. Rossi', rf: '9399640', status: 'Ativo', ordem: 11 },
+  { id: '13', nome: 'Drailton José de Santana', rf: '9535241', status: 'Ativo', ordem: 12 },
+  { id: '14', nome: 'Gabriel Guerrero', rf: '9535501', status: 'Ativo', ordem: 13 },
+  { id: '15', nome: 'Giancarlo Soares Ferreira', rf: '9535624', status: 'Ativo', ordem: 14 },
 ];
 
 export default function App() {
@@ -113,10 +113,17 @@ export default function App() {
   const [novoRF, setNovoRF] = useState('');
   const [formErro, setFormErro] = useState('');
 
-  // Estados de Modais Customizados
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
-  const [resetModal, setResetModal] = useState({ isOpen: false });
-  const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
+  // Botão Desfazer Último Comando (Melhoria 2)
+  const [ultimoComandoGravado, setUltimoComandoGravado] = useState(null);
+  const [segundosRestantesDesfazer, setSegundosRestantesDesfazer] = useState(0);
+
+  useEffect(() => {
+    if (segundosRestantesDesfazer <= 0) return;
+    const timer = setTimeout(() => {
+      setSegundosRestantesDesfazer(prev => prev - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [segundosRestantesDesfazer]);
 
   // Injetar a fonte Plus Jakarta Sans
   useEffect(() => {
@@ -183,7 +190,11 @@ export default function App() {
         listaHistorico.push({ id: doc.id, ...doc.data() });
       });
       // Ordenação na memória para evitar índices extras no Firebase
-      listaHistorico.sort((a, b) => new Date(b.data) - new Date(a.data));
+      listaHistorico.sort((a, b) => {
+        const diffData = new Date(b.data) - new Date(a.data);
+        if (diffData !== 0) return diffData;
+        return (b.createdAt ?? 0) - (a.createdAt ?? 0);
+      });
       setHistorico(listaHistorico);
       setLoadingHistorico(false);
     }, (error) => {
@@ -206,7 +217,6 @@ export default function App() {
           nome: fiscal.nome,
           rf: fiscal.rf,
           status: fiscal.status,
-          ultimaEscala: fiscal.ultimaEscala,
           ordem: fiscal.ordem
         });
       }
@@ -234,7 +244,9 @@ export default function App() {
     }
     ref.setHours(0, 0, 0, 0);
     
-    const dataUltima = new Date(ultimaEscala);
+    // Converte o timestamp para string de data no fuso local antes de comparar
+    const dataUltimaStr = new Date(ultimaEscala).toLocaleDateString('en-CA'); // "YYYY-MM-DD" local
+    const dataUltima = new Date(`${dataUltimaStr}T12:00:00`); // ancora no meio-dia, sem risco de virar dia
     dataUltima.setHours(0, 0, 0, 0);
     
     const diffTempo = ref - dataUltima;
@@ -304,14 +316,7 @@ export default function App() {
     return (posturaNome, dataReferencia = new Date()) => {
       const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
       
-      // 1. Encontrar o mínimo de comandos gerais realizados entre os fiscais ativos (para rodízio da lista mãe)
-      const totalGeralList = activeFiscais.map(f => {
-        const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-        return stats.totalGeral || 0;
-      });
-      const minTotalGeral = totalGeralList.length > 0 ? Math.min(...totalGeralList) : 0;
-
-      // 2. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
+      // 1. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
       const realizacoesList = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
         return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
@@ -324,23 +329,25 @@ export default function App() {
           const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
           
-          const isMotherListBlocked = stats.totalGeral > minTotalGeral;
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
           const isQuarentenado = statusBloqueio.isBloqueado;
           
           // Definição de grupos de prioridade:
-          // Grupo 1: Apto (não bloqueado pela Lista Mãe nem pela Postura) e NÃO quarentenado
+          // Grupo 1: Apto (não bloqueado pela Postura) e NÃO quarentenado
           // Grupo 2: Apto mas quarentenado (quarentena é ignorada se todos os elegíveis estiverem nela)
-          // Grupo 3: Bloqueado pela Lista Mãe ou pela Postura (deve aguardar a rotação correspondente)
+          // Grupo 3: Bloqueado pela Postura (deve aguardar a rotação correspondente)
           let grupo = 1;
           let label = '';
           
           if (isPostureBlocked) {
             grupo = 3;
-            label = 'Postura Bloq.';
-          } else if (isMotherListBlocked) {
-            grupo = 3;
-            label = 'Lista Mãe Bloq.';
+            // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
+            const fiscaisAtras = activeFiscais.filter(other => {
+              const otherStats = estatisticasFiscais[String(other.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+              const otherRealizacoes = otherStats.porPostura[posturaNome.trim().toLowerCase()] || 0;
+              return otherRealizacoes < realizacoesDaPostura;
+            }).length;
+            label = `Aguard. ${fiscaisAtras} fisc.`;
           } else if (isQuarentenado) {
             grupo = 2;
             label = statusBloqueio.label;
@@ -351,7 +358,7 @@ export default function App() {
             realizacoesDaPostura,
             totalGeral: stats.totalGeral,
             ultimaEscala: stats.ultimaEscala,
-            isBloqueado: isPostureBlocked || isMotherListBlocked || isQuarentenado,
+            isBloqueado: isPostureBlocked || isQuarentenado,
             isBloqueadoLabel: label,
             grupo
           };
@@ -378,6 +385,57 @@ export default function App() {
     if (sugerirFiscais.length === 0) return null;
     return sugerirFiscais[0];
   }, [sugerirFiscais]);
+
+  // Verifica se todos os fiscais aptos para esta postura estão sob quarentena (grupo === 2)
+  const todosAptosEmQuarentena = useMemo(() => {
+    const aptos = sugerirFiscais.filter(f => f.grupo !== 3);
+    return aptos.length > 0 && aptos.every(f => f.grupo === 2);
+  }, [sugerirFiscais]);
+
+  // Confirmação explícita mostrando quem seria o próximo se não fosse a regra (Melhoria 3)
+  const justificativaEscala = useMemo(() => {
+    if (!fiscalIndicado || !selectedPostura) return null;
+    
+    // Lista de fiscais ativos
+    const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
+    // Ordena pela fila manual da lista mãe
+    const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    
+    // Encontra quem está antes do fiscal indicado na fila da lista mãe
+    const pulados = listMaeOrdenada.filter(f => (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0));
+    
+    if (pulados.length === 0) {
+      return `Este fiscal é o primeiro na ordem natural da lista mãe.`;
+    }
+    
+    // Pega o primeiro pulado para justificar
+    const primeiroPulado = pulados[0];
+    
+    // Descobre o motivo do pulo dele para esta postura e data
+    const stats = estatisticasFiscais[String(primeiroPulado.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
+    const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataComando);
+    
+    const realizacoesDaPostura = stats.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
+    
+    // Encontra o mínimo de realizações desta postura
+    const realizacoesList = activeFiscais.map(f => {
+      const s = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+      return s.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
+    });
+    const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
+    const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
+    
+    let motivo = '';
+    if (isPostureBlocked) {
+      motivo = 'já realizou esta postura recentemente (bloqueado por rodízio)';
+    } else if (statusBloqueio.isBloqueado) {
+      motivo = `está em quarentena de descanso (${statusBloqueio.label.toLowerCase()})`;
+    } else {
+      motivo = 'está em descanso ou indisponível';
+    }
+    
+    return `O fiscal ${primeiroPulado.nome} seria o próximo da lista mãe, mas ${motivo}. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+  }, [fiscalIndicado, fiscais, estatisticasFiscais, dataComando, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
@@ -415,31 +473,50 @@ export default function App() {
     // Combinar dataComando (YYYY-MM-DD) e horarioComando (HH:MM)
     const dataObjeto = new Date(`${dataComando}T${horarioComando || '12:00'}:00`);
     const dataIso = dataObjeto.toISOString();
-    const timestampComando = dataObjeto.getTime();
     
     const fiscalAlvo = fiscais.find(f => f.id === fiscalId);
     if (!fiscalAlvo) return;
 
     try {
-      // 1. Atualizar data da última escala no fiscal (Removido pontos!)
-      const fiscalDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', fiscalId);
-      await updateDoc(fiscalDocRef, {
-        ultimaEscala: timestampComando
+      // Registrar comando no histórico (Removido peso!)
+      const historicoColRef = collection(db, 'artifacts', appId, 'public', 'data', 'historico');
+      const docRef = await addDoc(historicoColRef, {
+        fiscalNome: fiscalAlvo.nome,
+        rf: fiscalAlvo.rf,
+        postura: String(postura.nome).trim(),
+        data: dataIso,
+        createdAt: Date.now() // Timestamp para desempate preciso
       });
 
-      // 2. Registrar comando no histórico (Removido peso!)
-      const historicoColRef = collection(db, 'artifacts', appId, 'public', 'data', 'historico');
-      await addDoc(historicoColRef, {
+      // Salva o último comando para a opção de Desfazer
+      setUltimoComandoGravado({
+        id: docRef.id,
         fiscalNome: fiscalAlvo.nome,
         rf: fiscalAlvo.rf,
         postura: postura.nome,
-        data: dataIso
+        timestamp: Date.now()
       });
+      setSegundosRestantesDesfazer(30);
 
       showNotification(`Escala de ${fiscalAlvo.nome} confirmada e gravada no banco!`);
     } catch (e) {
       console.error("Erro ao gravar escala:", e);
       showNotification("Falha ao gravar no Firebase.");
+    }
+  };
+
+  // Desfazer Última Escala Confirmada (Melhoria 2)
+  const handleDesfazerUltimoComando = async () => {
+    if (!ultimoComandoGravado) return;
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'historico', ultimoComandoGravado.id);
+      await deleteDoc(docRef);
+      showNotification(`Convocação de ${ultimoComandoGravado.fiscalNome} desfeita com sucesso!`);
+      setUltimoComandoGravado(null);
+      setSegundosRestantesDesfazer(0);
+    } catch (e) {
+      console.error("Erro ao desfazer comando:", e);
+      showNotification("Erro ao desfazer a convocação.");
     }
   };
 
@@ -454,6 +531,13 @@ export default function App() {
       return;
     }
 
+    const rfNormalizado = novoRF.trim();
+    const rfExiste = fiscais.some(f => String(f.rf).trim() === rfNormalizado);
+    if (rfExiste) {
+      setFormErro('Já existe um fiscal cadastrado com este RF.');
+      return;
+    }
+
     try {
       const fiscaisColRef = collection(db, 'artifacts', appId, 'public', 'data', 'fiscais');
       const novaOrdem = fiscais.length; // Insere no fim da fila atual
@@ -462,7 +546,6 @@ export default function App() {
         nome: novoNome.trim(),
         rf: novoRF.trim(),
         status: 'Ativo',
-        ultimaEscala: null,
         ordem: novaOrdem
       });
 
@@ -496,15 +579,10 @@ export default function App() {
   const confirmarResetTotal = async () => {
     if (!user) return;
     try {
-      // 1. Zera as datas de última escala de cada fiscal ativo no banco
-      for (const f of fiscais) {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', f.id);
-        await updateDoc(docRef, {
-          ultimaEscala: null
-        });
-      }
+      // Limpa temporariamente o estado local de forma imediata para evitar flashes de UI
+      setHistorico([]);
 
-      // 2. Limpa o histórico de comandos
+      // Limpa o histórico de comandos
       for (const log of historico) {
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'historico', log.id);
         await deleteDoc(docRef);
@@ -967,7 +1045,7 @@ export default function App() {
                     
                     {fiscalIndicado ? (
                       <div className="relative z-10">
-                        {fiscalIndicado.isBloqueado ? (
+                        {fiscalIndicado.isBloqueado && todosAptosEmQuarentena ? (
                           <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
                             <AlertCircle size={16} className="text-red-400 shrink-0" />
                             <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam nos últimos 15 dias! Sugerindo o mais antigo.</span>
@@ -978,9 +1056,15 @@ export default function App() {
                           </p>
                         )}
                         <h3 className="text-2xl font-extrabold tracking-tight mb-1">{fiscalIndicado.nome}</h3>
-                        <p className="text-slate-400 text-xs mb-6">
+                        <p className="text-slate-400 text-xs mb-4">
                           RF {fiscalIndicado.rf} • Total de comandos: {fiscalIndicado.totalGeral}
                         </p>
+                        
+                        {justificativaEscala && (
+                          <div className="mb-6 p-3.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-[11px] text-amber-200/90 leading-relaxed font-medium">
+                            <span className="font-bold text-amber-400">💡 Informação da Fila:</span> {justificativaEscala}
+                          </div>
+                        )}
                         
                         <div className="space-y-3">
                           <button 
@@ -1376,6 +1460,28 @@ export default function App() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toast flutuante de Desfazer Último Comando (Melhoria 2) */}
+      {ultimoComandoGravado && segundosRestantesDesfazer > 0 && (
+        <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-6 md:bottom-8 md:w-96 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-800 z-50 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 text-xs font-black shrink-0">
+              {segundosRestantesDesfazer}s
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-400">Última Convocação</p>
+              <p className="text-xs font-semibold text-slate-200 truncate">{ultimoComandoGravado.fiscalNome}</p>
+              <p className="text-[9px] text-slate-400 truncate">{ultimoComandoGravado.postura}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleDesfazerUltimoComando}
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shrink-0 cursor-pointer"
+          >
+            Desfazer
+          </button>
         </div>
       )}
 
