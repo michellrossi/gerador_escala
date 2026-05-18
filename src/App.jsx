@@ -47,30 +47,30 @@ const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 const POSTURAS = [
-  { id: 1, nome: 'Veículos Abandonados', peso: 1, categoria: 'Leve', periodo: 'Diurno' },
-  { id: 2, nome: 'Feira Livre', peso: 3, categoria: 'Pesado', periodo: 'Diurno' },
-  { id: 3, nome: 'Ambulantes', peso: 3, categoria: 'Pesado', periodo: 'Misto' },
-  { id: 4, nome: 'Funcionamento após 1h', peso: 3, categoria: 'Pesado', periodo: 'Noturno' },
-  { id: 5, nome: 'Atividade (08h às 19h)', peso: 1, categoria: 'Leve', periodo: 'Diurno' },
-  { id: 6, nome: 'Atividade (pós 19h)', peso: 2, categoria: 'Médio', periodo: 'Noturno' },
+  { id: 1, nome: 'Veículos Abandonados', categoria: 'Leve', periodo: 'Diurno' },
+  { id: 2, nome: 'Feira Livre', categoria: 'Pesado', periodo: 'Diurno' },
+  { id: 3, nome: 'Ambulantes', categoria: 'Pesado', periodo: 'Misto' },
+  { id: 4, nome: 'Funcionamento após 1h', categoria: 'Pesado', periodo: 'Noturno' },
+  { id: 5, nome: 'Atividade (08h às 19h)', categoria: 'Leve', periodo: 'Diurno' },
+  { id: 6, nome: 'Atividade (pós 19h)', categoria: 'Médio', periodo: 'Noturno' },
 ];
 
 const FISCAIS_INICIAIS_SEMENTE = [
-  { id: '1', nome: 'Daviceli S. Cirino', rf: '6802796', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 0 },
-  { id: '2', nome: 'Lizandra Barros Souza', rf: '7056702', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 1 },
-  { id: '3', nome: 'Marcelo Makibara', rf: '7256787', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 2 },
-  { id: '4', nome: 'Carlos Alberto Vannucchi Pachá', rf: '7330871', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 3 },
-  { id: '5', nome: 'Amanda Melzi Costa', rf: '8982392', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 4 },
-  { id: '6', nome: 'Samara Rodrigues de Paula', rf: '9152075', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 5 },
-  { id: '7', nome: 'Bia R. Ribeiro', rf: '9387838', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 6 },
-  { id: '8', nome: 'Fernanda Mendes dos Santos', rf: '9388753', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 7 },
-  { id: '9', nome: 'Felipe Soares Santos', rf: '9389016', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 8 },
-  { id: '10', nome: 'Fabíola Ruiz', rf: '9390651', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 9 },
-  { id: '11', nome: 'Caroline Barbosa Paliarussi', rf: '9399208', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 10 },
-  { id: '12', nome: 'Michell D. Rossi', rf: '9399640', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 11 },
-  { id: '13', nome: 'Drailton José de Santana', rf: '9535241', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 12 },
-  { id: '14', nome: 'Gabriel Guerrero', rf: '9535501', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 13 },
-  { id: '15', nome: 'Giancarlo Soares Ferreira', rf: '9535624', pontos: 0, status: 'Ativo', ultimaEscala: null, ordem: 14 },
+  { id: '1', nome: 'Daviceli S. Cirino', rf: '6802796', status: 'Ativo', ultimaEscala: null, ordem: 0 },
+  { id: '2', nome: 'Lizandra Barros Souza', rf: '7056702', status: 'Ativo', ultimaEscala: null, ordem: 1 },
+  { id: '3', nome: 'Marcelo Makibara', rf: '7256787', status: 'Ativo', ultimaEscala: null, ordem: 2 },
+  { id: '4', nome: 'Carlos Alberto Vannucchi Pachá', rf: '7330871', status: 'Ativo', ultimaEscala: null, ordem: 3 },
+  { id: '5', nome: 'Amanda Melzi Costa', rf: '8982392', status: 'Ativo', ultimaEscala: null, ordem: 4 },
+  { id: '6', nome: 'Samara Rodrigues de Paula', rf: '9152075', status: 'Ativo', ultimaEscala: null, ordem: 5 },
+  { id: '7', nome: 'Bia R. Ribeiro', rf: '9387838', status: 'Ativo', ultimaEscala: null, ordem: 6 },
+  { id: '8', nome: 'Fernanda Mendes dos Santos', rf: '9388753', status: 'Ativo', ultimaEscala: null, ordem: 7 },
+  { id: '9', nome: 'Felipe Soares Santos', rf: '9389016', status: 'Ativo', ultimaEscala: null, ordem: 8 },
+  { id: '10', nome: 'Fabíola Ruiz', rf: '9390651', status: 'Ativo', ultimaEscala: null, ordem: 9 },
+  { id: '11', nome: 'Caroline Barbosa Paliarussi', rf: '9399208', status: 'Ativo', ultimaEscala: null, ordem: 10 },
+  { id: '12', nome: 'Michell D. Rossi', rf: '9399640', status: 'Ativo', ultimaEscala: null, ordem: 11 },
+  { id: '13', nome: 'Drailton José de Santana', rf: '9535241', status: 'Ativo', ultimaEscala: null, ordem: 12 },
+  { id: '14', nome: 'Gabriel Guerrero', rf: '9535501', status: 'Ativo', ultimaEscala: null, ordem: 13 },
+  { id: '15', nome: 'Giancarlo Soares Ferreira', rf: '9535624', status: 'Ativo', ultimaEscala: null, ordem: 14 },
 ];
 
 export default function App() {
@@ -86,6 +86,11 @@ export default function App() {
   // Navegação e Controle
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPostura, setSelectedPostura] = useState(POSTURAS[0]);
+  const [dataComando, setDataComando] = useState(() => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzOffset).toISOString().slice(0, 10);
+  });
   const [notification, setNotification] = useState(null);
 
   // Drag and Drop e Ordenação
@@ -188,7 +193,6 @@ export default function App() {
         await setDoc(docRef, {
           nome: fiscal.nome,
           rf: fiscal.rf,
-          pontos: fiscal.pontos,
           status: fiscal.status,
           ultimaEscala: fiscal.ultimaEscala,
           ordem: fiscal.ordem
@@ -205,24 +209,23 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Função para verificar se o fiscal trabalhou hoje ou ontem (descanso obrigatório de dias civis)
-  const checkBloqueioDescanso = (ultimaEscala) => {
+  // Função para verificar se o fiscal trabalhou nos últimos 15 dias (descanso obrigatório de 15 dias civis)
+  const checkBloqueioDescanso = (ultimaEscala, dataReferencia = new Date()) => {
     if (!ultimaEscala) return { isBloqueado: false, label: '' };
     
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const ref = new Date(dataReferencia);
+    ref.setHours(0, 0, 0, 0);
     
     const dataUltima = new Date(ultimaEscala);
     dataUltima.setHours(0, 0, 0, 0);
     
-    const diffTempo = hoje - dataUltima;
+    const diffTempo = ref - dataUltima;
     const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
     
-    if (diffDias === 0) {
-      return { isBloqueado: true, label: 'Trabalhou Hoje' };
-    }
-    if (diffDias === 1) {
-      return { isBloqueado: true, label: 'Trabalhou Ontem' };
+    if (diffDias >= 0 && diffDias < 15) {
+      if (diffDias === 0) return { isBloqueado: true, label: 'Trabalhou Hoje' };
+      if (diffDias === 1) return { isBloqueado: true, label: 'Trabalhou Ontem' };
+      return { isBloqueado: true, label: `Descanso (${15 - diffDias}d rest.)` };
     }
     return { isBloqueado: false, label: '' };
   };
@@ -259,13 +262,13 @@ export default function App() {
 
   // Função pura para retornar a fila ordenada de fiscais para uma postura específica
   const obterFilaPostura = useMemo(() => {
-    return (posturaNome) => {
+    return (posturaNome, dataReferencia = new Date()) => {
       return [...fiscais]
         .filter(f => f.status === 'Ativo')
         .map(f => {
           const stats = estatisticasFiscais[f.rf] || { porPostura: {}, totalGeral: 0 };
           const realizacoesDaPostura = stats.porPostura[posturaNome] || 0;
-          const statusBloqueio = checkBloqueioDescanso(f.ultimaEscala);
+          const statusBloqueio = checkBloqueioDescanso(f.ultimaEscala, dataReferencia);
           
           return {
             ...f,
@@ -294,11 +297,11 @@ export default function App() {
     };
   }, [fiscais, estatisticasFiscais]);
 
-  // Cálculo de Indicação de Próximos Fiscais para a postura selecionada
+  // Cálculo de Indicação de Próximos Fiscais para a postura selecionada (depende da data selecionada)
   const sugerirFiscais = useMemo(() => {
     if (!selectedPostura) return [];
-    return obterFilaPostura(selectedPostura.nome);
-  }, [selectedPostura, obterFilaPostura]);
+    return obterFilaPostura(selectedPostura.nome, dataComando);
+  }, [selectedPostura, obterFilaPostura, dataComando]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -317,26 +320,28 @@ export default function App() {
   // Confirmar escala e registrar no banco
   const confirmarEscala = async (fiscalId, postura) => {
     if (!user) return;
-    const dataIso = new Date().toISOString();
+    
+    // Converter dataComando (YYYY-MM-DD) para Objeto Date no Meio-Dia Local para evitar desvios de fuso horário
+    const dataObjeto = new Date(dataComando + 'T12:00:00');
+    const dataIso = dataObjeto.toISOString();
+    const timestampComando = dataObjeto.getTime();
+    
     const fiscalAlvo = fiscais.find(f => f.id === fiscalId);
-
     if (!fiscalAlvo) return;
 
     try {
-      // 1. Atualizar pontuação e data da última escala no fiscal
+      // 1. Atualizar data da última escala no fiscal (Removido pontos!)
       const fiscalDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', fiscalId);
       await updateDoc(fiscalDocRef, {
-        pontos: fiscalAlvo.pontos + postura.peso,
-        ultimaEscala: Date.now()
+        ultimaEscala: timestampComando
       });
 
-      // 2. Registrar comando no histórico
+      // 2. Registrar comando no histórico (Removido peso!)
       const historicoColRef = collection(db, 'artifacts', appId, 'public', 'data', 'historico');
       await addDoc(historicoColRef, {
         fiscalNome: fiscalAlvo.nome,
         rf: fiscalAlvo.rf,
         postura: postura.nome,
-        peso: postura.peso,
         data: dataIso
       });
 
@@ -365,7 +370,6 @@ export default function App() {
       await addDoc(fiscaisColRef, {
         nome: novoNome.trim(),
         rf: novoRF.trim(),
-        pontos: 0,
         status: 'Ativo',
         ultimaEscala: null,
         ordem: novaOrdem
@@ -396,15 +400,14 @@ export default function App() {
     }
   };
 
-  // Limpar histórico e reiniciar todas as pontuações para zero
+  // Limpar histórico e reiniciar todas as datas de escalas
   const confirmarResetTotal = async () => {
     if (!user) return;
     try {
-      // 1. Zera os pontos de cada um dos fiscais ativos no banco
+      // 1. Zera as datas de última escala de cada fiscal ativo no banco
       for (const f of fiscais) {
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', f.id);
         await updateDoc(docRef, {
-          pontos: 0,
           ultimaEscala: null
         });
       }
@@ -416,7 +419,7 @@ export default function App() {
       }
 
       setResetModal({ isOpen: false });
-      showNotification("Histórico limpo e todas as pontuações zeradas!");
+      showNotification("Histórico limpo e rodízio reiniciado com sucesso!");
     } catch (e) {
       console.error("Erro ao redefinir base:", e);
       showNotification("Falha ao resetar o banco.");
@@ -460,14 +463,14 @@ export default function App() {
     }
   };
 
-  // Filtro Dinâmico de Ordenação de Pontuação
+  // Filtro Dinâmico de Ordenação por Comandos Realizados
   const handleToggleSort = () => {
     if (sortDirection === null) {
       setSortDirection('asc');
-      showNotification("Exibição ordenada por pontuação crescente.");
+      showNotification("Exibição ordenada por menos comandos.");
     } else if (sortDirection === 'asc') {
       setSortDirection('desc');
-      showNotification("Exibição ordenada por pontuação decrescente.");
+      showNotification("Exibição ordenada por mais comandos.");
     } else {
       setSortDirection(null);
       showNotification("Fila de prioridade manual restaurada.");
@@ -476,13 +479,21 @@ export default function App() {
 
   const sortedFiscais = useMemo(() => {
     if (sortDirection === 'asc') {
-      return [...fiscais].sort((a, b) => a.pontos - b.pontos);
+      return [...fiscais].sort((a, b) => {
+        const aCount = estatisticasFiscais[a.rf]?.totalGeral || 0;
+        const bCount = estatisticasFiscais[b.rf]?.totalGeral || 0;
+        return aCount - bCount;
+      });
     }
     if (sortDirection === 'desc') {
-      return [...fiscais].sort((a, b) => b.pontos - a.pontos);
+      return [...fiscais].sort((a, b) => {
+        const aCount = estatisticasFiscais[a.rf]?.totalGeral || 0;
+        const bCount = estatisticasFiscais[b.rf]?.totalGeral || 0;
+        return bCount - aCount;
+      });
     }
     return fiscais;
-  }, [fiscais, sortDirection]);
+  }, [fiscais, sortDirection, estatisticasFiscais]);
 
   // Se a autenticação geral do Firebase ainda não terminou, renderiza tela de loading elegante
   if (authLoading || (user && loadingFiscais && loadingHistorico)) {
@@ -586,30 +597,26 @@ export default function App() {
               </div>
 
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Média da Equipe</p>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Média de Serviços</p>
                 <h3 className="text-3xl font-black text-blue-600">
                   {fiscais.length > 0 
-                    ? (fiscais.reduce((acc, curr) => acc + (curr.pontos || 0), 0) / fiscais.length).toFixed(1)
+                    ? (historico.length / fiscais.length).toFixed(1)
                     : 0
                   }
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">Pontos por fiscal</p>
+                <p className="text-[11px] text-slate-400 mt-1">Comandos por fiscal</p>
               </div>
             </div>
 
-            {/* Posturas e Pesos List */}
+            {/* Posturas Cadastradas */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-              <h2 className="font-extrabold text-sm text-slate-400 uppercase tracking-wider mb-4">Posturas e Pesos Definidos</h2>
+              <h2 className="font-extrabold text-sm text-slate-400 uppercase tracking-wider mb-4">Posturas Cadastradas</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {POSTURAS.map(p => (
                   <div key={p.id} className="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                     <div>
                       <span className="text-xs font-bold text-slate-700 block">{p.nome}</span>
                       <span className="text-[10px] text-slate-400 font-semibold">{p.periodo} • {p.categoria}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-white border px-3 py-1.5 rounded-lg shadow-sm">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">Peso</span>
-                      <span className="text-sm font-extrabold text-slate-800">{p.peso}</span>
                     </div>
                   </div>
                 ))}
@@ -620,7 +627,7 @@ export default function App() {
             <div className="space-y-4">
               <h2 className="font-extrabold text-sm text-slate-700 flex items-center gap-2">
                 <TrendingUp size={16} className="text-amber-500" />
-                Filas de Rodízio por Tipo de Postura (Descanso Obrigatório de 2 Dias)
+                Filas de Rodízio por Tipo de Postura (Descanso Obrigatório de 15 Dias)
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -759,7 +766,7 @@ export default function App() {
                         onClick={handleToggleSort}
                       >
                         <div className="flex items-center gap-2">
-                          <span>Pontuação Acumulada</span>
+                          <span>Comandos Realizados</span>
                           <span className="text-slate-400 group-hover:text-slate-800 transition-colors">
                             {sortDirection === 'asc' && <ArrowUp size={14} className="text-amber-600" />}
                             {sortDirection === 'desc' && <ArrowDown size={14} className="text-amber-600" />}
@@ -806,14 +813,9 @@ export default function App() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-extrabold text-slate-800">
-                                {estatisticasFiscais[fiscal.rf]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-medium">
-                                {fiscal.pontos} pts acumulados
-                              </span>
-                            </div>
+                            <span className="text-sm font-extrabold text-slate-800 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
+                              {estatisticasFiscais[fiscal.rf]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
+                            </span>
                           </td>
 
                           <td className="px-5 py-4">
@@ -873,6 +875,16 @@ export default function App() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <div className="mb-5">
+                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Data do Comando</label>
+                    <input 
+                      type="date"
+                      value={dataComando}
+                      onChange={(e) => setDataComando(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
+                    />
+                  </div>
+
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">1. Escolha a Postura a Realizar</label>
                   <div className="grid grid-cols-1 gap-2">
                     {POSTURAS.map(p => (
@@ -895,10 +907,6 @@ export default function App() {
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wide">Peso</span>
-                          <span className="text-lg font-black text-amber-600">{p.peso}</span>
-                        </div>
                       </button>
                     ))}
                   </div>
@@ -916,7 +924,7 @@ export default function App() {
                         {sugerirFiscais[0].isBloqueado ? (
                           <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
                             <AlertCircle size={16} className="text-red-400 shrink-0" />
-                            <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam ontem ou hoje! Sugerindo o mais antigo.</span>
+                            <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam nos últimos 15 dias! Sugerindo o mais antigo.</span>
                           </div>
                         ) : (
                           <p className="text-amber-400 text-[10px] font-bold uppercase mb-4 flex items-center gap-1.5 tracking-wider">
@@ -937,7 +945,7 @@ export default function App() {
                           </button>
                           
                           <p className="text-[10px] text-center text-slate-400 leading-relaxed">
-                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 2 dias civis.
+                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 15 dias civis.
                           </p>
                         </div>
                       </div>
