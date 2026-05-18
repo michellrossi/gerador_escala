@@ -252,7 +252,8 @@ export default function App() {
       const rfStr = String(f.rf).trim();
       stats[rfStr] = {
         totalGeral: 0,
-        porPostura: {}
+        porPostura: {},
+        ultimaEscala: null
       };
       POSTURAS.forEach(p => {
         stats[rfStr].porPostura[p.nome.trim().toLowerCase()] = 0;
@@ -270,6 +271,23 @@ export default function App() {
         } else {
           stats[rfStr].porPostura[posturaLog] = 1;
         }
+
+        // Extrai o timestamp de forma ultra segura (suporta string ISO e Firestore Timestamp)
+        let logTime = null;
+        if (log.data) {
+          if (typeof log.data.toDate === 'function') {
+            logTime = log.data.toDate().getTime();
+          } else {
+            const parsedDate = new Date(log.data);
+            if (!isNaN(parsedDate.getTime())) {
+              logTime = parsedDate.getTime();
+            }
+          }
+        }
+        
+        if (logTime && (!stats[rfStr].ultimaEscala || logTime > stats[rfStr].ultimaEscala)) {
+          stats[rfStr].ultimaEscala = logTime;
+        }
       }
     });
 
@@ -281,7 +299,14 @@ export default function App() {
     return (posturaNome, dataReferencia = new Date()) => {
       const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
       
-      // 1. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
+      // 1. Encontrar o mínimo de comandos gerais realizados entre os fiscais ativos (para rodízio da lista mãe)
+      const totalGeralList = activeFiscais.map(f => {
+        const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+        return stats.totalGeral || 0;
+      });
+      const minTotalGeral = totalGeralList.length > 0 ? Math.min(...totalGeralList) : 0;
+
+      // 2. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
       const realizacoesList = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
         return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
@@ -294,19 +319,23 @@ export default function App() {
           const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
           
+          const isMotherListBlocked = stats.totalGeral > minTotalGeral;
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
           const isQuarentenado = statusBloqueio.isBloqueado;
           
           // Definição de grupos de prioridade:
-          // Grupo 1: Apto para Postura e NÃO quarentenado
-          // Grupo 2: Apto para Postura mas quarentenado (quarentena é ignorada se todos estiverem nela)
-          // Grupo 3: Bloqueado por Postura (não rodou a fila desta postura ainda)
+          // Grupo 1: Apto (não bloqueado pela Lista Mãe nem pela Postura) e NÃO quarentenado
+          // Grupo 2: Apto mas quarentenado (quarentena é ignorada se todos os elegíveis estiverem nela)
+          // Grupo 3: Bloqueado pela Lista Mãe ou pela Postura (deve aguardar a rotação correspondente)
           let grupo = 1;
           let label = '';
           
           if (isPostureBlocked) {
             grupo = 3;
             label = 'Postura Bloq.';
+          } else if (isMotherListBlocked) {
+            grupo = 3;
+            label = 'Lista Mãe Bloq.';
           } else if (isQuarentenado) {
             grupo = 2;
             label = statusBloqueio.label;
@@ -317,7 +346,7 @@ export default function App() {
             realizacoesDaPostura,
             totalGeral: stats.totalGeral,
             ultimaEscala: stats.ultimaEscala,
-            isBloqueado: isPostureBlocked || isQuarentenado,
+            isBloqueado: isPostureBlocked || isMotherListBlocked || isQuarentenado,
             isBloqueadoLabel: label,
             grupo
           };
