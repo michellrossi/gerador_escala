@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  History, 
-  Settings, 
-  AlertCircle, 
-  CheckCircle2, 
+import {
+  Users,
+  Calendar,
+  History,
+  Settings,
+  AlertCircle,
+  CheckCircle2,
   ArrowUpCircle,
   Clock,
   ShieldCheck,
@@ -33,13 +33,13 @@ import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, on
 const firebaseConfig = typeof __firebase_config !== 'undefined'
   ? JSON.parse(__firebase_config)
   : {
-      apiKey: "AIzaSyAkcvdM0ejRoG6rBGicdaxYfI0M9ElJPTc",
-      authDomain: "gerador-de-escala-9baf0.firebaseapp.com",
-      projectId: "gerador-de-escala-9baf0",
-      storageBucket: "gerador-de-escala-9baf0.firebasestorage.app",
-      messagingSenderId: "935916934856",
-      appId: "1:935916934856:web:53949854120c1780c737fd"
-    };
+    apiKey: "AIzaSyAkcvdM0ejRoG6rBGicdaxYfI0M9ElJPTc",
+    authDomain: "gerador-de-escala-9baf0.firebaseapp.com",
+    projectId: "gerador-de-escala-9baf0",
+    storageBucket: "gerador-de-escala-9baf0.firebasestorage.app",
+    messagingSenderId: "935916934856",
+    appId: "1:935916934856:web:53949854120c1780c737fd"
+  };
 
 // Inicialização dos serviços Firebase
 const app = initializeApp(firebaseConfig);
@@ -78,7 +78,7 @@ export default function App() {
   const [fiscais, setFiscais] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [user, setUser] = useState(null);
-  
+
   // Loading states
   const [authLoading, setAuthLoading] = useState(true);
   const [loadingFiscais, setLoadingFiscais] = useState(true);
@@ -236,10 +236,10 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Função para verificar se o fiscal trabalhou nos últimos 15 dias (descanso obrigatório de 15 dias civis)
+  // Função para verificar se o fiscal trabalhou nos últimos 15 dias (descanso obrigatório de 15 dias)
   const checkBloqueioDescanso = (ultimaEscala, dataReferencia = new Date()) => {
     if (!ultimaEscala) return { isBloqueado: false, label: '' };
-    
+
     let ref;
     if (typeof dataReferencia === 'string' && dataReferencia.includes('-')) {
       // Evita o bug de fuso horário (UTC vs Local) ao forçar meio-dia local
@@ -248,15 +248,15 @@ export default function App() {
       ref = new Date(dataReferencia);
     }
     ref.setHours(0, 0, 0, 0);
-    
+
     // Converte o timestamp para string de data no fuso local antes de comparar
     const dataUltimaStr = new Date(ultimaEscala).toLocaleDateString('en-CA'); // "YYYY-MM-DD" local
     const dataUltima = new Date(`${dataUltimaStr}T12:00:00`); // ancora no meio-dia, sem risco de virar dia
     dataUltima.setHours(0, 0, 0, 0);
-    
+
     const diffTempo = ref - dataUltima;
     const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
-    
+
     if (diffDias >= 0 && diffDias < 15) {
       if (diffDias === 0) return { isBloqueado: true, label: 'Trabalhou Hoje' };
       if (diffDias === 1) return { isBloqueado: true, label: 'Trabalhou Ontem' };
@@ -268,7 +268,7 @@ export default function App() {
   // Mapeia o histórico em tempo real para contar quantas vezes cada fiscal fez cada postura
   const estatisticasFiscais = useMemo(() => {
     const stats = {};
-    
+
     // Inicializa a estrutura para todos os fiscais
     fiscais.forEach(f => {
       const rfStr = String(f.rf).trim();
@@ -306,7 +306,7 @@ export default function App() {
             }
           }
         }
-        
+
         if (logTime && (!stats[rfStr].ultimaEscala || logTime > stats[rfStr].ultimaEscala)) {
           stats[rfStr].ultimaEscala = logTime;
         }
@@ -320,7 +320,7 @@ export default function App() {
   const obterFilaPostura = useMemo(() => {
     return (posturaNome, dataReferencia = new Date()) => {
       const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
-      
+
       // 1. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
       const realizacoesList = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
@@ -333,17 +333,17 @@ export default function App() {
           const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
           const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
-          
+
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
           const isQuarentenado = statusBloqueio.isBloqueado;
-          
+
           // Definição de grupos de prioridade:
           // Grupo 1: Apto (não bloqueado pela Postura) e NÃO quarentenado
           // Grupo 2: Apto mas quarentenado (quarentena é ignorada se todos os elegíveis estiverem nela)
           // Grupo 3: Bloqueado pela Postura (deve aguardar a rotação correspondente)
           let grupo = 1;
           let label = '';
-          
+
           if (isPostureBlocked) {
             grupo = 3;
             // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
@@ -400,28 +400,28 @@ export default function App() {
   // Confirmação explícita mostrando quem seria o próximo se não fosse a regra (Melhoria 3)
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
-    
+
     // Lista de fiscais ativos
     const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
     // Ordena pela fila manual da lista mãe
     const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-    
+
     // Encontra quem está antes do fiscal indicado na fila da lista mãe
     const pulados = listMaeOrdenada.filter(f => (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0));
-    
+
     if (pulados.length === 0) {
       return `Este fiscal é o primeiro na ordem natural da lista mãe.`;
     }
-    
+
     // Pega o primeiro pulado para justificar
     const primeiroPulado = pulados[0];
-    
+
     // Descobre o motivo do pulo dele para esta postura e data
     const stats = estatisticasFiscais[String(primeiroPulado.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
     const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataComando);
-    
+
     const realizacoesDaPostura = stats.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
-    
+
     // Encontra o mínimo de realizações desta postura
     const realizacoesList = activeFiscais.map(f => {
       const s = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
@@ -429,7 +429,7 @@ export default function App() {
     });
     const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
     const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
-    
+
     let motivo = '';
     if (isPostureBlocked) {
       motivo = 'já realizou esta postura recentemente (bloqueado por rodízio)';
@@ -438,7 +438,7 @@ export default function App() {
     } else {
       motivo = 'está em descanso ou indisponível';
     }
-    
+
     return `O fiscal ${primeiroPulado.nome} seria o próximo da lista mãe, mas ${motivo}. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
   }, [fiscalIndicado, fiscais, estatisticasFiscais, dataComando, selectedPostura]);
 
@@ -474,11 +474,11 @@ export default function App() {
   // Confirmar escala e registrar no banco
   const confirmarEscala = async (fiscalId, postura) => {
     if (!user) return;
-    
+
     // Combinar dataComando (YYYY-MM-DD) e horarioComando (HH:MM)
     const dataObjeto = new Date(`${dataComando}T${horarioComando || '12:00'}:00`);
     const dataIso = dataObjeto.toISOString();
-    
+
     const fiscalAlvo = fiscais.find(f => f.id === fiscalId);
     if (!fiscalAlvo) return;
 
@@ -682,7 +682,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-[#2d3748]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      
+
       {/* Header */}
       <header className="bg-slate-900 text-white p-5 shadow-sm sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
@@ -695,7 +695,7 @@ export default function App() {
               <p className="text-xs text-slate-400">Prefeitura de São Paulo • Banco de Dados em Tempo Real</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setResetModal({ isOpen: true })}
             className="p-2.5 hover:bg-slate-800 rounded-xl transition-all border border-slate-800"
             title="Reiniciar Sistema"
@@ -721,11 +721,10 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-2.5 md:px-5 py-1.5 md:py-2.5 rounded-xl text-[9px] md:text-sm font-bold md:font-semibold transition-all whitespace-nowrap flex-1 ${
-                    isActive 
-                      ? 'bg-slate-100 text-slate-800 md:bg-[#f5f3ef] shadow-2xs md:shadow-sm' 
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-2.5 md:px-5 py-1.5 md:py-2.5 rounded-xl text-[9px] md:text-sm font-bold md:font-semibold transition-all whitespace-nowrap flex-1 ${isActive
+                      ? 'bg-slate-100 text-slate-800 md:bg-[#f5f3ef] shadow-2xs md:shadow-sm'
                       : 'text-slate-400 md:text-slate-500 hover:text-slate-800 md:hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <tab.icon size={18} className={isActive ? 'text-amber-600' : 'text-slate-400'} />
                   <span>{tab.label}</span>
@@ -737,7 +736,7 @@ export default function App() {
       </div>
 
       <main className="max-w-5xl mx-auto p-4 md:p-6 pb-28 md:pb-24">
-        
+
         {/* Notification Toast */}
         {notification && (
           <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in z-50 border border-slate-800">
@@ -775,7 +774,7 @@ export default function App() {
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Média de Serviços</p>
                 <h3 className="text-3xl font-black text-blue-600">
-                  {fiscais.length > 0 
+                  {fiscais.length > 0
                     ? (historico.length / fiscais.length).toFixed(1)
                     : 0
                   }
@@ -805,7 +804,7 @@ export default function App() {
                 <TrendingUp size={16} className="text-amber-500" />
                 Filas de Rodízio por Tipo de Postura (Descanso Obrigatório de 15 Dias)
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {POSTURAS.map(p => {
                   const fila = obterFilaPostura(p.nome, dataComando);
@@ -852,8 +851,8 @@ export default function App() {
         {/* FISCAIS TAB */}
         {activeTab === 'fiscais' && (
           <div className="space-y-6">
-            
-             
+
+
 
             {/* Lista com Tabela */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -863,7 +862,7 @@ export default function App() {
                   Corpo de Fiscais e Escalas
                 </h2>
                 {sortDirection && (
-                  <button 
+                  <button
                     onClick={() => setSortDirection(null)}
                     className="text-[10px] bg-slate-100 text-slate-600 hover:bg-slate-200 px-2 py-1 rounded-md font-bold uppercase transition-all"
                   >
@@ -871,15 +870,15 @@ export default function App() {
                   </button>
                 )}
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse border-spacing-0">
                   <thead>
                     <tr className="bg-slate-50/30 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider border-b border-slate-100">
                       <th className="px-5 py-4 w-12 text-center">Mover</th>
                       <th className="px-5 py-4">Fiscal / RF</th>
-                      
-                      <th 
+
+                      <th
                         className="px-5 py-4 cursor-pointer select-none hover:bg-slate-50/80 transition-colors group"
                         onClick={handleToggleSort}
                       >
@@ -900,26 +899,24 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100">
                     {sortedFiscais.map((fiscal, index) => {
                       const isDragging = draggedIndex === index;
-                      
+
                       return (
-                        <tr 
-                          key={fiscal.id} 
+                        <tr
+                          key={fiscal.id}
                           draggable={!sortDirection}
                           onDragStart={(e) => handleDragStart(e, index)}
                           onDragOver={(e) => handleDragOver(e, index)}
                           onDrop={(e) => handleDrop(e, index)}
-                          className={`hover:bg-slate-50/50 transition-colors group ${
-                            isDragging ? 'opacity-40 bg-slate-50' : ''
-                          }`}
+                          className={`hover:bg-slate-50/50 transition-colors group ${isDragging ? 'opacity-40 bg-slate-50' : ''
+                            }`}
                         >
                           {/* Arrastar */}
                           <td className="px-5 py-4 text-center">
-                            <div 
-                              className={`flex justify-center items-center ${
-                                sortDirection 
-                                  ? 'text-slate-200 cursor-not-allowed' 
+                            <div
+                              className={`flex justify-center items-center ${sortDirection
+                                  ? 'text-slate-200 cursor-not-allowed'
                                   : 'text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing'
-                              }`}
+                                }`}
                             >
                               <GripVertical size={16} />
                             </div>
@@ -937,11 +934,10 @@ export default function App() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                              fiscal.status === 'Ativo' 
-                                ? 'bg-green-50 text-green-700 border border-green-100' 
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${fiscal.status === 'Ativo'
+                                ? 'bg-green-50 text-green-700 border border-green-100'
                                 : 'bg-amber-50 text-amber-700 border border-amber-100'
-                            }`}>
+                              }`}>
                               {fiscal.status === 'Ativo' ? (
                                 <>Apto para Comando</>
                               ) : (
@@ -952,18 +948,17 @@ export default function App() {
 
                           <td className="px-5 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button 
+                              <button
                                 onClick={() => toggleFerias(fiscal.id, fiscal.status)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                  fiscal.status === 'Ativo'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fiscal.status === 'Ativo'
                                     ? 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent'
                                     : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
-                                }`}
+                                  }`}
                               >
                                 {fiscal.status === 'Ativo' ? 'Férias' : 'Ativar'}
                               </button>
 
-                              <button 
+                              <button
                                 onClick={() => setDeleteModal({ isOpen: true, fiscal })}
                                 className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                 title="Remover fiscal"
@@ -990,13 +985,13 @@ export default function App() {
                 <Calendar size={18} className="text-amber-500" />
                 Planejar Novo Comando
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <div className="grid grid-cols-2 gap-4 mb-5">
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Data do Comando</label>
-                      <input 
+                      <input
                         type="date"
                         value={dataComando}
                         onChange={(e) => setDataComando(e.target.value)}
@@ -1005,7 +1000,7 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Horário de Início</label>
-                      <input 
+                      <input
                         type="time"
                         value={horarioComando}
                         onChange={(e) => setHorarioComando(e.target.value)}
@@ -1020,11 +1015,10 @@ export default function App() {
                       <button
                         key={p.id}
                         onClick={() => setSelectedPostura(p)}
-                        className={`p-3.5 rounded-xl border-2 text-left transition-all flex justify-between items-center ${
-                          selectedPostura.id === p.id 
-                            ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100/50' 
+                        className={`p-3.5 rounded-xl border-2 text-left transition-all flex justify-between items-center ${selectedPostura.id === p.id
+                            ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100/50'
                             : 'border-slate-100 hover:border-slate-300'
-                        }`}
+                          }`}
                       >
                         <div>
                           <p className="font-bold text-sm text-slate-800">{p.nome}</p>
@@ -1047,7 +1041,7 @@ export default function App() {
                     <div className="absolute top-0 right-0 p-4 opacity-5">
                       <ArrowUpCircle size={120} />
                     </div>
-                    
+
                     {fiscalIndicado ? (
                       <div className="relative z-10">
                         {fiscalIndicado.isBloqueado && todosAptosEmQuarentena ? (
@@ -1064,23 +1058,23 @@ export default function App() {
                         <p className="text-slate-400 text-xs mb-4">
                           RF {fiscalIndicado.rf} • Total de comandos: {fiscalIndicado.totalGeral}
                         </p>
-                        
+
                         {justificativaEscala && (
                           <div className="mb-6 p-3.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-[11px] text-amber-200/90 leading-relaxed font-medium">
                             <span className="font-bold text-amber-400">💡 Informação da Fila:</span> {justificativaEscala}
                           </div>
                         )}
-                        
+
                         <div className="space-y-3">
-                          <button 
+                          <button
                             onClick={() => confirmarEscala(fiscalIndicado.id, selectedPostura)}
                             className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm uppercase tracking-wider"
                           >
                             CONFIRMAR CONVOCAÇÃO
                           </button>
-                          
+
                           <p className="text-[10px] text-center text-slate-400 leading-relaxed">
-                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 15 dias civis.
+                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 15 dias.
                           </p>
                         </div>
                       </div>
@@ -1127,7 +1121,7 @@ export default function App() {
         {activeTab === 'historico' && (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                 <h2 className="font-extrabold text-sm text-slate-700 flex items-center gap-2">
                   <History size={18} className="text-amber-500" />
                   Registro de Comandos Realizados
@@ -1179,7 +1173,7 @@ export default function App() {
                 <div className="p-16 text-center text-slate-400">
                   <AlertCircle size={40} className="mx-auto mb-3 text-slate-300 opacity-60" />
                   <p className="text-sm font-semibold">Nenhum registro encontrado para os filtros selecionados.</p>
-                  <button 
+                  <button
                     onClick={() => {
                       setFiltroFiscalHistorico('');
                       setFiltroPosturaHistorico('');
@@ -1231,7 +1225,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {fiscais.map(f => {
                 const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
-                const formattedUltima = stats.ultimaEscala 
+                const formattedUltima = stats.ultimaEscala
                   ? `${new Date(stats.ultimaEscala).toLocaleDateString('pt-BR')} às ${new Date(stats.ultimaEscala).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
                   : 'Nenhum comando registrado';
 
@@ -1249,11 +1243,10 @@ export default function App() {
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">RF {f.rf}</span>
                           </div>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
-                          f.status === 'Ativo' 
-                            ? 'bg-green-50 text-green-700 border border-green-100' 
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${f.status === 'Ativo'
+                            ? 'bg-green-50 text-green-700 border border-green-100'
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
-                        }`}>
+                          }`}>
                           {f.status === 'Ativo' ? 'Apto' : 'Férias'}
                         </span>
                       </div>
@@ -1275,9 +1268,8 @@ export default function App() {
                           return (
                             <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-slate-100/50 last:border-b-0">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                  p.periodo === 'Diurno' ? 'bg-emerald-400' : p.periodo === 'Noturno' ? 'bg-indigo-400' : 'bg-amber-400'
-                                }`} />
+                                <span className={`w-1.5 h-1.5 rounded-full ${p.periodo === 'Diurno' ? 'bg-emerald-400' : p.periodo === 'Noturno' ? 'bg-indigo-400' : 'bg-amber-400'
+                                  }`} />
                                 <span className="text-[11px] font-bold text-slate-600 truncate">{p.nome}</span>
                               </div>
                               <span className="text-[11px] font-extrabold text-slate-800 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/50">
@@ -1314,26 +1306,26 @@ export default function App() {
                 <AlertCircle className="text-red-500" size={20} />
                 Confirmar Exclusão
               </h3>
-              <button 
+              <button
                 onClick={() => setDeleteModal({ isOpen: false, fiscal: null })}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X size={18} />
               </button>
             </div>
-            
+
             <p className="text-sm text-slate-600 mb-6 leading-relaxed">
               Você tem certeza que deseja excluir o fiscal <strong className="text-slate-800">{deleteModal.fiscal?.nome}</strong> (RF: {deleteModal.fiscal?.rf}) do sistema? Essa ação não poderá ser desfeita.
             </p>
 
             <div className="flex gap-3 justify-end">
-              <button 
+              <button
                 onClick={() => setDeleteModal({ isOpen: false, fiscal: null })}
                 className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={confirmarExclusaoFiscal}
                 className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm shadow-red-100"
               >
@@ -1353,26 +1345,26 @@ export default function App() {
                 <Settings className="text-amber-500 animate-spin-slow" size={20} />
                 Zerar Sistema de Escalas
               </h3>
-              <button 
+              <button
                 onClick={() => setResetModal({ isOpen: false })}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X size={18} />
               </button>
             </div>
-            
+
             <p className="text-sm text-slate-600 mb-6 leading-relaxed">
               Deseja zerar todas as pontuações dos fiscais atuais e limpar permanentemente o histórico de comandos? Isso irá reiniciar o ciclo de justiça.
             </p>
 
             <div className="flex gap-3 justify-end">
-              <button 
+              <button
                 onClick={() => setResetModal({ isOpen: false })}
                 className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={confirmarResetTotal}
                 className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
               >
@@ -1409,19 +1401,19 @@ export default function App() {
                 <UserPlus className="text-amber-500" size={20} />
                 Cadastrar Novo Fiscal
               </h3>
-              <button 
+              <button
                 onClick={() => setAddFiscalModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
-            
+
             <form onSubmit={handleAdicionarFiscal} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Nome Completo</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={novoNome}
                   onChange={(e) => setNovoNome(e.target.value)}
                   placeholder="Ex: Carlos Alberto"
@@ -1429,11 +1421,11 @@ export default function App() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Registro Funcional (RF)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={novoRF}
                   onChange={(e) => setNovoRF(e.target.value)}
                   placeholder="Ex: 7330871"
@@ -1449,14 +1441,14 @@ export default function App() {
               )}
 
               <div className="flex gap-3 justify-end pt-3">
-                <button 
+                <button
                   type="button"
                   onClick={() => setAddFiscalModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
                 >
@@ -1481,7 +1473,7 @@ export default function App() {
               <p className="text-[9px] text-slate-400 truncate">{ultimoComandoGravado.postura}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleDesfazerUltimoComando}
             className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shrink-0 cursor-pointer"
           >
