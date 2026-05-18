@@ -1103,25 +1103,18 @@ export default function App() {
               ) : (
                 <div className="divide-y divide-slate-100">
                   {historicoFiltrado.map(log => (
-                    <div key={log.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/30">
-                      <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-                          SP
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">{log.fiscalNome}</p>
-                          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{log.postura}</p>
-                        </div>
+                    <div key={log.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/30">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[11px] sm:text-sm text-slate-800 truncate">{log.fiscalNome}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider truncate mt-0.5">{log.postura}</p>
                       </div>
-                      <div className="flex items-center justify-between md:justify-end gap-6">
-                        <div className="text-right bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-                          <p className="text-xs font-bold text-slate-700">
-                            {new Date(log.data).toLocaleDateString('pt-BR')}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
-                            às {new Date(log.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
+                      <div className="shrink-0 text-right bg-slate-50 border border-slate-100 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2">
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-700">
+                          {new Date(log.data).toLocaleDateString('pt-BR')}
+                        </p>
+                        <p className="text-[8px] sm:text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
+                          às {new Date(log.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
                   ))}
