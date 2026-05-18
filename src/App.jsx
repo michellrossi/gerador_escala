@@ -414,30 +414,44 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Fiscais com ordem menor que o indicado que estão BLOQUEADOS por postura (grupo 3)
-    const puladosPorPostura = sugerirFiscais.filter(f =>
-      f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-    );
+    // 1. Identificar o próximo da lista mãe geral (fiscais ativos)
+    const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
+    const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const proximoGeralListaMae = listMaeOrdenada[0];
 
-    // Só justifica se há alguém de grupo 3 antes do indicado na lista mãe
-    // E esse alguém seria o imediatamente anterior ao indicado (é o "próximo" real)
-    if (puladosPorPostura.length > 0) {
-      // Pega o de maior ordem entre os bloqueados antes do indicado
-      // (o que estaria imediatamente na frente na fila natural)
-      const maisProximo = puladosPorPostura.reduce((prev, curr) =>
-        (curr.ordem ?? 0) > (prev.ordem ?? 0) ? curr : prev
-      );
-      return `${maisProximo.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
+    // Verificar se o próximo da lista mãe geral está bloqueado por rodízio de postura (Grupo 3)
+    const proximoGeralFila = proximoGeralListaMae
+      ? sugerirFiscais.find(sf => sf.id === proximoGeralListaMae.id)
+      : null;
+    const proximoGeralBloqueadoPostura = proximoGeralFila && proximoGeralFila.grupo === 3;
+
+    // Caso de Rodízio de Postura: o próximo da lista mãe geral está bloqueado por postura específica
+    if (proximoGeralBloqueadoPostura && proximoGeralListaMae) {
+      return `O fiscal ${proximoGeralListaMae.nome} seria o próximo da lista mãe, mas já realizou esta postura recentemente (bloqueado por rodízio). Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
     }
 
-    // Caso de descanso geral — todos em quarentena
+    // Caso de Descanso Geral: todos os elegíveis estão sob quarentena
     if (todosAptosEmQuarentena) {
       return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
     }
 
-    // Fluxo natural — não exibe caixa de aviso desnecessária
+    // 2. Filtrar os elegíveis para a postura (Grupo 1 ou 2, quem não está bloqueado por postura)
+    const elegiveis = sugerirFiscais.filter(f => f.grupo !== 3);
+    const elegiveisOrdenadosListaMae = [...elegiveis].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const primeiroElegivelListaMae = elegiveisOrdenadosListaMae[0];
+
+    // Caso de Fluxo Natural: o primeiro elegível da lista mãe é exatamente o indicado
+    if (primeiroElegivelListaMae?.id === fiscalIndicado.id) {
+      return null;
+    }
+
+    // Caso de Quarentena: o primeiro elegível está em quarentena (Grupo 2), então convocamos o indicado (Grupo 1)
+    if (primeiroElegivelListaMae) {
+      return `O fiscal ${primeiroElegivelListaMae.nome} seria o próximo da lista mãe, mas está em quarentena de descanso. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    }
+
     return null;
-  }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
+  }, [fiscalIndicado, fiscais, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
