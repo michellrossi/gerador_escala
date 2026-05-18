@@ -279,35 +279,55 @@ export default function App() {
   // Função pura para retornar a fila ordenada de fiscais para uma postura específica
   const obterFilaPostura = useMemo(() => {
     return (posturaNome, dataReferencia = new Date()) => {
-      return [...fiscais]
-        .filter(f => f.status === 'Ativo')
+      const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
+      
+      // 1. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
+      const realizacoesList = activeFiscais.map(f => {
+        const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+        return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
+      });
+      const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
+
+      return activeFiscais
         .map(f => {
-          const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+          const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
           const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
-          const statusBloqueio = checkBloqueioDescanso(f.ultimaEscala, dataReferencia);
+          const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
           
+          const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
+          const isQuarentenado = statusBloqueio.isBloqueado;
+          
+          // Definição de grupos de prioridade:
+          // Grupo 1: Apto para Postura e NÃO quarentenado
+          // Grupo 2: Apto para Postura mas quarentenado (quarentena é ignorada se todos estiverem nela)
+          // Grupo 3: Bloqueado por Postura (não rodou a fila desta postura ainda)
+          let grupo = 1;
+          let label = '';
+          
+          if (isPostureBlocked) {
+            grupo = 3;
+            label = 'Postura Bloq.';
+          } else if (isQuarentenado) {
+            grupo = 2;
+            label = statusBloqueio.label;
+          }
+
           return {
             ...f,
             realizacoesDaPostura,
             totalGeral: stats.totalGeral,
-            isBloqueado: statusBloqueio.isBloqueado,
-            isBloqueadoLabel: statusBloqueio.label
+            ultimaEscala: stats.ultimaEscala,
+            isBloqueado: isPostureBlocked || isQuarentenado,
+            isBloqueadoLabel: label,
+            grupo
           };
         })
         .sort((a, b) => {
-          // 1. Quem fez essa postura menos vezes vem primeiro (rodízio rigoroso)
-          if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
-            return a.realizacoesDaPostura - b.realizacoesDaPostura;
+          // Ordena pelo grupo de prioridade (1, depois 2, depois 3)
+          if (a.grupo !== b.grupo) {
+            return a.grupo - b.grupo;
           }
-          
-          // 2. Desempate: quem trabalhou a mais tempo no geral (ultimaEscala mais antiga ou null)
-          const aUltima = a.ultimaEscala || 0;
-          const bUltima = b.ultimaEscala || 0;
-          if (aUltima !== bUltima) {
-            return aUltima - bUltima;
-          }
-          
-          // 3. Desempate final: ordem da lista manual
+          // Desempate final: ordem estrita da lista mãe manual
           return (a.ordem ?? 0) - (b.ordem ?? 0);
         });
     };
@@ -319,19 +339,17 @@ export default function App() {
     return obterFilaPostura(selectedPostura.nome, dataComando);
   }, [selectedPostura, obterFilaPostura, dataComando]);
 
-  // O mais indicado é o primeiro fiscal da fila da postura que NÃO está bloqueado.
-  // Se todos estiverem bloqueados, sugerimos o primeiro da fila (mais antigo).
+  // O mais indicado é o primeiro fiscal da fila da postura (que já está ordenado por prioridade)
   const fiscalIndicado = useMemo(() => {
     if (sugerirFiscais.length === 0) return null;
-    const unblocked = sugerirFiscais.find(f => !f.isBloqueado);
-    return unblocked || sugerirFiscais[0];
+    return sugerirFiscais[0];
   }, [sugerirFiscais]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
-    if (!fiscalIndicado) return [];
-    return sugerirFiscais.filter(f => f.id !== fiscalIndicado.id).slice(0, 3);
-  }, [sugerirFiscais, fiscalIndicado]);
+    if (sugerirFiscais.length <= 1) return [];
+    return sugerirFiscais.slice(1, 4);
+  }, [sugerirFiscais]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -787,7 +805,7 @@ export default function App() {
 
                           <td className="px-5 py-4">
                             <span className="text-sm font-extrabold text-slate-800 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
-                              {estatisticasFiscais[fiscal.rf]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
+                              {estatisticasFiscais[String(fiscal.rf).trim()]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
                             </span>
                           </td>
 
