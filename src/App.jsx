@@ -414,28 +414,29 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Fiscais elegíveis para esta postura = grupos 1 e 2 (não bloqueados por postura)
-    // Ordenados pela lista mãe manual (campo `ordem`)
-    const elegiveisParaPostura = sugerirFiscais
-      .filter(f => f.grupo !== 3)
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    // Fiscais com ordem menor que o indicado que estão BLOQUEADOS por postura (grupo 3)
+    const puladosPorPostura = sugerirFiscais.filter(f =>
+      f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
+    );
 
-    // O primeiro elegível na ordem da lista mãe é sempre o "próximo natural"
-    // Se ele é exatamente o indicado → fluxo natural, sem justificativa
-    const primeiroNatural = elegiveisParaPostura[0];
-    if (!primeiroNatural || primeiroNatural.id === fiscalIndicado.id) {
-      // Caso especial: descanso geral (todos elegíveis em quarentena)
-      if (todosAptosEmQuarentena) {
-        return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
-      }
-      // Fluxo completamente normal — sem justificativa
-      return null;
+    // Só justifica se há alguém de grupo 3 antes do indicado na lista mãe
+    // E esse alguém seria o imediatamente anterior ao indicado (é o "próximo" real)
+    if (puladosPorPostura.length > 0) {
+      // Pega o de maior ordem entre os bloqueados antes do indicado
+      // (o que estaria imediatamente na frente na fila natural)
+      const maisProximo = puladosPorPostura.reduce((prev, curr) =>
+        (curr.ordem ?? 0) > (prev.ordem ?? 0) ? curr : prev
+      );
+      return `${maisProximo.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
     }
 
-    // Se chegou aqui, o indicado NÃO é o primeiro elegível da lista mãe.
-    // Isso significa que alguém de grupo 2 (quarentena) foi pulado.
-    // Mostra quem foi pulado e por quê.
-    return `${primeiroNatural.nome} seria o próximo apto na fila, mas está em período de descanso obrigatório. Convocando ${fiscalIndicado.nome}.`;
+    // Caso de descanso geral — todos em quarentena
+    if (todosAptosEmQuarentena) {
+      return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
+    }
+
+    // Fluxo natural — não exibe caixa de aviso desnecessária
+    return null;
   }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
