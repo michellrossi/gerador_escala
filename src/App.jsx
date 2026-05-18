@@ -220,7 +220,13 @@ export default function App() {
   const checkBloqueioDescanso = (ultimaEscala, dataReferencia = new Date()) => {
     if (!ultimaEscala) return { isBloqueado: false, label: '' };
     
-    const ref = new Date(dataReferencia);
+    let ref;
+    if (typeof dataReferencia === 'string' && dataReferencia.includes('-')) {
+      // Evita o bug de fuso horário (UTC vs Local) ao forçar meio-dia local
+      ref = new Date(`${dataReferencia}T12:00:00`);
+    } else {
+      ref = new Date(dataReferencia);
+    }
     ref.setHours(0, 0, 0, 0);
     
     const dataUltima = new Date(ultimaEscala);
