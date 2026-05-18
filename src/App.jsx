@@ -414,39 +414,30 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Lista de fiscais ativos
-    const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
-
-    // O fiscal indicado deveria ser o 1º da lista mãe entre os aptos?
-    // Pegar o primeiro da lista mãe que está no grupo 1 ou 2 (não bloqueado por postura)
-    const primeiroListaMaeApto = [...activeFiscais]
-      .filter(f => f.status === 'Ativo')
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
-      .find(f => {
-        const fNaFila = sugerirFiscais.find(sf => sf.id === f.id);
-        return fNaFila && fNaFila.grupo !== 3; // apto para a postura
-      });
-
-    if (primeiroListaMaeApto?.id === fiscalIndicado.id) {
-      // É realmente o próximo — mensagem simples
-      return `Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
-    }
-
-    // Há alguém antes dele na lista mãe que foi pulado — verificar motivo
-    const pulados = sugerirFiscais.filter(f =>
-      (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
+    // Fiscais com ordem menor que o indicado que estão BLOQUEADOS por postura (grupo 3)
+    const puladosPorPostura = sugerirFiscais.filter(f =>
+      f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
     );
-    const puladoPorPostura = pulados.find(f => f.grupo === 3);
-    const puladoPorQuarentena = pulados.find(f => f.grupo === 2);
 
-    if (puladoPorPostura) {
-      return `${puladoPorPostura.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    // Só justifica se há alguém de grupo 3 antes do indicado na lista mãe
+    // E esse alguém seria o imediatamente anterior ao indicado (é o "próximo" real)
+    if (puladosPorPostura.length > 0) {
+      // Pega o de maior ordem entre os bloqueados antes do indicado
+      // (o que estaria imediatamente na frente na fila natural)
+      const maisProximo = puladosPorPostura.reduce((prev, curr) =>
+        (curr.ordem ?? 0) > (prev.ordem ?? 0) ? curr : prev
+      );
+      return `${maisProximo.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
     }
-    if (puladoPorQuarentena && todosAptosEmQuarentena) {
+
+    // Caso de descanso geral — todos em quarentena
+    if (todosAptosEmQuarentena) {
       return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
     }
-    return `Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
-  }, [fiscalIndicado, fiscais, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
+
+    // Fluxo natural — não exibe caixa de aviso desnecessária
+    return null;
+  }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
