@@ -205,17 +205,100 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Cálculo de Indicação de Próximos Fiscais (Algoritmo de Fila de Justiça)
-  const sugerirFiscais = useMemo(() => {
-    return [...fiscais]
-      .filter(f => f.status === 'Ativo')
-      .sort((a, b) => {
-        // Prioridade 1: Menor pontuação acumulada (Quem fez menos)
-        if (a.pontos !== b.pontos) return a.pontos - b.pontos;
-        // Prioridade 2: Quem está parado a mais tempo na escala temporal
-        return (a.ultimaEscala || 0) - (b.ultimaEscala || 0);
+  // Função para verificar se o fiscal trabalhou hoje ou ontem (descanso obrigatório de dias civis)
+  const checkBloqueioDescanso = (ultimaEscala) => {
+    if (!ultimaEscala) return { isBloqueado: false, label: '' };
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    const dataUltima = new Date(ultimaEscala);
+    dataUltima.setHours(0, 0, 0, 0);
+    
+    const diffTempo = hoje - dataUltima;
+    const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
+    
+    if (diffDias === 0) {
+      return { isBloqueado: true, label: 'Trabalhou Hoje' };
+    }
+    if (diffDias === 1) {
+      return { isBloqueado: true, label: 'Trabalhou Ontem' };
+    }
+    return { isBloqueado: false, label: '' };
+  };
+
+  // Mapeia o histórico em tempo real para contar quantas vezes cada fiscal fez cada postura
+  const estatisticasFiscais = useMemo(() => {
+    const stats = {};
+    
+    // Inicializa a estrutura para todos os fiscais
+    fiscais.forEach(f => {
+      stats[f.rf] = {
+        totalGeral: 0,
+        porPostura: {}
+      };
+      POSTURAS.forEach(p => {
+        stats[f.rf].porPostura[p.nome] = 0;
       });
-  }, [fiscais]);
+    });
+
+    // Processa os dados a partir do histórico recebido do Firestore
+    historico.forEach(log => {
+      if (stats[log.rf]) {
+        stats[log.rf].totalGeral += 1;
+        if (stats[log.rf].porPostura[log.postura] !== undefined) {
+          stats[log.rf].porPostura[log.postura] += 1;
+        } else {
+          stats[log.rf].porPostura[log.postura] = 1;
+        }
+      }
+    });
+
+    return stats;
+  }, [fiscais, historico]);
+
+  // Função pura para retornar a fila ordenada de fiscais para uma postura específica
+  const obterFilaPostura = useMemo(() => {
+    return (posturaNome) => {
+      return [...fiscais]
+        .filter(f => f.status === 'Ativo')
+        .map(f => {
+          const stats = estatisticasFiscais[f.rf] || { porPostura: {}, totalGeral: 0 };
+          const realizacoesDaPostura = stats.porPostura[posturaNome] || 0;
+          const statusBloqueio = checkBloqueioDescanso(f.ultimaEscala);
+          
+          return {
+            ...f,
+            realizacoesDaPostura,
+            totalGeral: stats.totalGeral,
+            isBloqueado: statusBloqueio.isBloqueado,
+            isBloqueadoLabel: statusBloqueio.label
+          };
+        })
+        .sort((a, b) => {
+          // 1. Quem NÃO está bloqueado vem primeiro
+          if (a.isBloqueado !== b.isBloqueado) {
+            return a.isBloqueado ? 1 : -1;
+          }
+          
+          // 2. Quem fez essa postura menos vezes vem primeiro
+          if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
+            return a.realizacoesDaPostura - b.realizacoesDaPostura;
+          }
+          
+          // 3. Desempate: quem trabalhou a mais tempo no geral (ultimaEscala mais antiga ou null)
+          const aUltima = a.ultimaEscala || 0;
+          const bUltima = b.ultimaEscala || 0;
+          return aUltima - bUltima;
+        });
+    };
+  }, [fiscais, estatisticasFiscais]);
+
+  // Cálculo de Indicação de Próximos Fiscais para a postura selecionada
+  const sugerirFiscais = useMemo(() => {
+    if (!selectedPostura) return [];
+    return obterFilaPostura(selectedPostura.nome);
+  }, [selectedPostura, obterFilaPostura]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -533,35 +616,54 @@ export default function App() {
               </div>
             </div>
 
-            {/* Ranking de Equilíbrio */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                <h2 className="font-extrabold text-sm text-slate-700 flex items-center gap-2">
-                  <TrendingUp size={16} className="text-amber-500" />
-                  Ranking de Equilíbrio de Pontos
-                </h2>
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Menos pontos = Mais prioridade</span>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {[...fiscais].sort((a, b) => b.pontos - a.pontos).map((fiscal, idx) => (
-                  <div key={fiscal.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                        {idx + 1}º
-                      </span>
-                      <div>
-                        <p className="font-bold text-sm text-slate-800">{fiscal.nome}</p>
-                        <p className="text-xs text-slate-400">RF {fiscal.rf} • {fiscal.status}</p>
+            {/* Visualização de 6 Listas de Rodízio por Tipo de Postura */}
+            <div className="space-y-4">
+              <h2 className="font-extrabold text-sm text-slate-700 flex items-center gap-2">
+                <TrendingUp size={16} className="text-amber-500" />
+                Filas de Rodízio por Tipo de Postura (Descanso Obrigatório de 2 Dias)
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {POSTURAS.map(p => {
+                  const fila = obterFilaPostura(p.nome);
+                  return (
+                    <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col transition-all hover:shadow-md hover:border-slate-200">
+                      <div className="p-4 bg-slate-900 text-white flex justify-between items-start">
+                        <div>
+                          <h3 className="font-extrabold text-xs leading-snug tracking-tight mb-1">{p.nome}</h3>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{p.periodo} • {p.categoria}</span>
+                        </div>
+                      </div>
+                      <div className="p-3 divide-y divide-slate-100 flex-1 bg-slate-50/20">
+                        {fila.slice(0, 5).map((f, idx) => (
+                          <div key={f.id} className="py-2.5 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-[9px] ${f.isBloqueado ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-800'}`}>
+                                {idx + 1}º
+                              </span>
+                              <div>
+                                <span className={`font-bold ${f.isBloqueado ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{f.nome}</span>
+                                {f.isBloqueado && (
+                                  <span className="ml-1.5 px-1 py-0.5 rounded bg-red-50 text-red-600 font-bold text-[8px] uppercase tracking-wider">
+                                    {f.isBloqueadoLabel}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded bg-white border border-slate-200/80 text-[10px] font-extrabold text-slate-500 shadow-xs">
+                              {f.realizacoesDaPostura}x
+                            </span>
+                          </div>
+                        ))}
+                        {fila.length === 0 && (
+                          <div className="py-8 text-center text-slate-400 text-xs font-semibold">
+                            Nenhum fiscal ativo disponível
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-base font-extrabold text-slate-800">{fiscal.pontos}</span>
-                        <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">pontos</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -704,9 +806,12 @@ export default function App() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-extrabold text-slate-800 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
-                                {fiscal.pontos} <span className="text-[10px] text-slate-400 font-semibold">pts</span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-extrabold text-slate-800">
+                                {estatisticasFiscais[fiscal.rf]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {fiscal.pontos} pts acumulados
                               </span>
                             </div>
                           </td>
@@ -808,12 +913,19 @@ export default function App() {
                     
                     {sugerirFiscais.length > 0 ? (
                       <div className="relative z-10">
-                        <p className="text-amber-400 text-[10px] font-bold uppercase mb-4 flex items-center gap-1.5 tracking-wider">
-                          <AlertCircle size={13} /> Fiscal mais elegível hoje
-                        </p>
+                        {sugerirFiscais[0].isBloqueado ? (
+                          <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
+                            <AlertCircle size={16} className="text-red-400 shrink-0" />
+                            <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam ontem ou hoje! Sugerindo o mais antigo.</span>
+                          </div>
+                        ) : (
+                          <p className="text-amber-400 text-[10px] font-bold uppercase mb-4 flex items-center gap-1.5 tracking-wider">
+                            <AlertCircle size={13} /> Fiscal mais indicado para {selectedPostura.nome}
+                          </p>
+                        )}
                         <h3 className="text-2xl font-extrabold tracking-tight mb-1">{sugerirFiscais[0].nome}</h3>
                         <p className="text-slate-400 text-xs mb-6">
-                          RF {sugerirFiscais[0].rf} • Pontos acumulados: {sugerirFiscais[0].pontos}
+                          RF {sugerirFiscais[0].rf} • Fez essa postura: <strong className="text-white">{sugerirFiscais[0].realizacoesDaPostura}x</strong> • Total geral: {sugerirFiscais[0].totalGeral} comandos
                         </p>
                         
                         <div className="space-y-3">
@@ -825,7 +937,7 @@ export default function App() {
                           </button>
                           
                           <p className="text-[10px] text-center text-slate-400 leading-relaxed">
-                            Ao confirmar, o fiscal recebe mais {selectedPostura.peso} pontos de impacto por realizar a postura de categoria {selectedPostura.categoria}.
+                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 2 dias civis.
                           </p>
                         </div>
                       </div>
@@ -837,17 +949,29 @@ export default function App() {
                   </div>
 
                   <div className="mt-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Próximos Fiscais na Fila de Prioridade</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Próximos Fiscais na Fila de Prioridade ({selectedPostura.nome})</p>
                     <div className="space-y-2">
                       {sugerirFiscais.slice(1, 4).map((f, i) => (
-                        <div key={f.id} className="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100 shadow-xs">
-                          <span className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                        <div key={f.id} className={`flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100 shadow-xs transition-all ${f.isBloqueado ? 'bg-slate-50/60 opacity-60' : ''}`}>
+                          <span className="text-xs font-semibold flex items-center gap-2">
                             <span className="text-[10px] text-slate-400 font-bold">{i + 2}º</span>
-                            {f.nome}
+                            <span className={f.isBloqueado ? 'text-slate-400 line-through' : 'text-slate-700'}>{f.nome}</span>
+                            {f.isBloqueado && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-bold text-[8px] uppercase tracking-wider scale-95">
+                                {f.isBloqueadoLabel}
+                              </span>
+                            )}
                           </span>
-                          <span className="text-[11px] bg-slate-50 px-2 py-0.5 rounded border text-slate-500 font-bold">{f.pontos} pts</span>
+                          <span className="text-[11px] bg-slate-50 px-2.5 py-1 rounded border border-slate-200/80 text-slate-500 font-extrabold shadow-2xs">
+                            {f.realizacoesDaPostura}x
+                          </span>
                         </div>
                       ))}
+                      {sugerirFiscais.length <= 1 && (
+                        <div className="text-center py-4 text-xs text-slate-400 font-semibold">
+                          Fim da fila de rodízio
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
