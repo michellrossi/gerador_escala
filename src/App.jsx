@@ -20,7 +20,8 @@ import {
   Trash2,
   UserPlus,
   X,
-  Loader2
+  Loader2,
+  BarChart3
 } from 'lucide-react';
 
 // Importações nativas do pacote npm do Firebase para compatibilidade completa no ambiente React
@@ -617,6 +618,7 @@ export default function App() {
               { id: 'fiscais', label: 'Fiscais', icon: Users },
               { id: 'escalar', label: 'Gerar escala', icon: Calendar },
               { id: 'historico', label: 'Histórico', icon: History },
+              { id: 'estatisticas', label: 'Estatísticas', icon: BarChart3 },
             ].map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -1061,6 +1063,96 @@ export default function App() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ESTATISTICAS TAB */}
+        {activeTab === 'estatisticas' && (
+          <div className="space-y-6">
+            {/* Cabeçalho Premium */}
+            <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-100/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                  <BarChart3 className="text-amber-500" size={22} />
+                  Quadro de Produtividade dos Fiscais
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 font-semibold">Acompanhe a quantidade total de convocações por postura e a data do último comando de cada fiscal em tempo real.</p>
+              </div>
+            </div>
+
+            {/* Grid de Cards dos Fiscais */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {fiscais.map(f => {
+                const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
+                const formattedUltima = stats.ultimaEscala 
+                  ? `${new Date(stats.ultimaEscala).toLocaleDateString('pt-BR')} às ${new Date(stats.ultimaEscala).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Nenhum comando registrado';
+
+                return (
+                  <div key={f.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between hover:border-slate-200/80 group">
+                    <div>
+                      {/* Topo do Card */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center font-extrabold text-sm text-slate-700">
+                            {f.nome ? f.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'SP'}
+                          </div>
+                          <div>
+                            <h3 className="font-extrabold text-sm text-slate-800 group-hover:text-amber-600 transition-colors leading-tight">{f.nome}</h3>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">RF {f.rf}</span>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                          f.status === 'Ativo' 
+                            ? 'bg-green-50 text-green-700 border border-green-100' 
+                            : 'bg-amber-50 text-amber-700 border border-amber-100'
+                        }`}>
+                          {f.status === 'Ativo' ? 'Apto' : 'Férias'}
+                        </span>
+                      </div>
+
+                      {/* Quadro Geral de Última Escala */}
+                      <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 mb-4 flex items-center gap-2.5">
+                        <Clock size={14} className={stats.ultimaEscala ? 'text-amber-500' : 'text-slate-400'} />
+                        <div className="min-w-0">
+                          <p className="text-[9px] text-slate-400 font-extrabold uppercase leading-none mb-1">Último Comando Realizado</p>
+                          <p className="text-xs font-bold text-slate-700 truncate">{formattedUltima}</p>
+                        </div>
+                      </div>
+
+                      {/* Lista de Posturas */}
+                      <div className="space-y-2 border-t border-slate-100 pt-3">
+                        <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-2.5">Comandos por Postura</p>
+                        {POSTURAS.map(p => {
+                          const count = stats.porPostura[p.nome.trim().toLowerCase()] || 0;
+                          return (
+                            <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-slate-100/50 last:border-b-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  p.periodo === 'Diurno' ? 'bg-emerald-400' : p.periodo === 'Noturno' ? 'bg-indigo-400' : 'bg-amber-400'
+                                }`} />
+                                <span className="text-[11px] font-bold text-slate-600 truncate">{p.nome}</span>
+                              </div>
+                              <span className="text-[11px] font-extrabold text-slate-800 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                {count}x
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Badge do Total de Comandos */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total de Convocações</span>
+                      <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-100 px-3 py-1 rounded-lg shadow-2xs">
+                        {stats.totalGeral} comandos
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
