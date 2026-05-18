@@ -407,39 +407,31 @@ export default function App() {
     const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
     // Encontra quem está antes do fiscal indicado na fila da lista mãe
-    const pulados = listMaeOrdenada.filter(f => (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0));
+    const anteriores = listMaeOrdenada.filter(f => (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0));
 
-    if (pulados.length === 0) {
-      return `Este fiscal é o primeiro na ordem natural da lista mãe.`;
-    }
+    // Encontra se algum fiscal anterior foi pulado especificamente por Bloqueio de Postura (Grupo 3)
+    const puladosPorPostura = anteriores.filter(f => {
+      const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+      const realizacoesDaPostura = stats.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
 
-    // Pega o primeiro pulado para justificar
-    const primeiroPulado = pulados[0];
+      // Encontra o mínimo de realizações desta postura
+      const realizacoesList = activeFiscais.map(act => {
+        const s = estatisticasFiscais[String(act.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+        return s.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
+      });
+      const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
 
-    // Descobre o motivo do pulo dele para esta postura e data
-    const stats = estatisticasFiscais[String(primeiroPulado.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
-    const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataComando);
-
-    const realizacoesDaPostura = stats.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
-
-    // Encontra o mínimo de realizações desta postura
-    const realizacoesList = activeFiscais.map(f => {
-      const s = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-      return s.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
+      return realizacoesDaPostura > minRealizacoes; // Bloqueado por postura
     });
-    const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
-    const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
 
-    let motivo = '';
-    if (isPostureBlocked) {
-      motivo = 'já realizou esta postura recentemente (bloqueado por rodízio)';
-    } else if (statusBloqueio.isBloqueado) {
-      motivo = `está em quarentena de descanso (${statusBloqueio.label.toLowerCase()})`;
-    } else {
-      motivo = 'está em descanso ou indisponível';
+    // Se houver algum fiscal pulado por bloqueio de postura, detalhamos
+    if (puladosPorPostura.length > 0) {
+      const primeiroPulado = puladosPorPostura[0];
+      return `O fiscal ${primeiroPulado.nome} seria o próximo da lista mãe, mas já realizou esta postura recentemente (bloqueado por rodízio). Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
     }
 
-    return `O fiscal ${primeiroPulado.nome} seria o próximo da lista mãe, mas ${motivo}. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    // Caso padrão de fluxo natural
+    return `Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
   }, [fiscalIndicado, fiscais, estatisticasFiscais, dataComando, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
