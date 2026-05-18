@@ -414,29 +414,28 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Fiscais com ordem menor que o indicado que estão BLOQUEADOS por postura (grupo 3)
-    const puladosPorPostura = sugerirFiscais.filter(f =>
-      f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-    );
+    // Fiscais elegíveis para esta postura = grupos 1 e 2 (não bloqueados por postura)
+    // Ordenados pela lista mãe manual (campo `ordem`)
+    const elegiveisParaPostura = sugerirFiscais
+      .filter(f => f.grupo !== 3)
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-    // Só justifica se há alguém de grupo 3 antes do indicado na lista mãe
-    // E esse alguém seria o imediatamente anterior ao indicado (é o "próximo" real)
-    if (puladosPorPostura.length > 0) {
-      // Pega o de maior ordem entre os bloqueados antes do indicado
-      // (o que estaria imediatamente na frente na fila natural)
-      const maisProximo = puladosPorPostura.reduce((prev, curr) =>
-        (curr.ordem ?? 0) > (prev.ordem ?? 0) ? curr : prev
-      );
-      return `${maisProximo.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
+    // O primeiro elegível na ordem da lista mãe é sempre o "próximo natural"
+    // Se ele é exatamente o indicado → fluxo natural, sem justificativa
+    const primeiroNatural = elegiveisParaPostura[0];
+    if (!primeiroNatural || primeiroNatural.id === fiscalIndicado.id) {
+      // Caso especial: descanso geral (todos elegíveis em quarentena)
+      if (todosAptosEmQuarentena) {
+        return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
+      }
+      // Fluxo completamente normal — sem justificativa
+      return null;
     }
 
-    // Caso de descanso geral — todos em quarentena
-    if (todosAptosEmQuarentena) {
-      return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
-    }
-
-    // Fluxo natural — não exibe caixa de aviso desnecessária
-    return null;
+    // Se chegou aqui, o indicado NÃO é o primeiro elegível da lista mãe.
+    // Isso significa que alguém de grupo 2 (quarentena) foi pulado.
+    // Mostra quem foi pulado e por quê.
+    return `${primeiroNatural.nome} seria o próximo apto na fila, mas está em período de descanso obrigatório. Convocando ${fiscalIndicado.nome}.`;
   }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
@@ -723,8 +722,8 @@ export default function App() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-2.5 md:px-5 py-1.5 md:py-2.5 rounded-xl text-[9px] md:text-sm font-bold md:font-semibold transition-all whitespace-nowrap flex-1 ${isActive
-                      ? 'bg-slate-100 text-slate-800 md:bg-[#f5f3ef] shadow-2xs md:shadow-sm'
-                      : 'text-slate-400 md:text-slate-500 hover:text-slate-800 md:hover:bg-slate-50'
+                    ? 'bg-slate-100 text-slate-800 md:bg-[#f5f3ef] shadow-2xs md:shadow-sm'
+                    : 'text-slate-400 md:text-slate-500 hover:text-slate-800 md:hover:bg-slate-50'
                     }`}
                 >
                   <tab.icon size={18} className={isActive ? 'text-amber-600' : 'text-slate-400'} />
@@ -915,8 +914,8 @@ export default function App() {
                           <td className="px-5 py-4 text-center">
                             <div
                               className={`flex justify-center items-center ${sortDirection
-                                  ? 'text-slate-200 cursor-not-allowed'
-                                  : 'text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing'
+                                ? 'text-slate-200 cursor-not-allowed'
+                                : 'text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing'
                                 }`}
                             >
                               <GripVertical size={16} />
@@ -936,8 +935,8 @@ export default function App() {
 
                           <td className="px-5 py-4">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${fiscal.status === 'Ativo'
-                                ? 'bg-green-50 text-green-700 border border-green-100'
-                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                              ? 'bg-green-50 text-green-700 border border-green-100'
+                              : 'bg-amber-50 text-amber-700 border border-amber-100'
                               }`}>
                               {fiscal.status === 'Ativo' ? (
                                 <>Apto para Comando</>
@@ -952,8 +951,8 @@ export default function App() {
                               <button
                                 onClick={() => toggleFerias(fiscal.id, fiscal.status)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fiscal.status === 'Ativo'
-                                    ? 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent'
-                                    : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                                  ? 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent'
+                                  : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
                                   }`}
                               >
                                 {fiscal.status === 'Ativo' ? 'Férias' : 'Ativar'}
@@ -1017,8 +1016,8 @@ export default function App() {
                         key={p.id}
                         onClick={() => setSelectedPostura(p)}
                         className={`p-3.5 rounded-xl border-2 text-left transition-all flex justify-between items-center ${selectedPostura.id === p.id
-                            ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100/50'
-                            : 'border-slate-100 hover:border-slate-300'
+                          ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100/50'
+                          : 'border-slate-100 hover:border-slate-300'
                           }`}
                       >
                         <div>
@@ -1245,8 +1244,8 @@ export default function App() {
                           </div>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${f.status === 'Ativo'
-                            ? 'bg-green-50 text-green-700 border border-green-100'
-                            : 'bg-amber-50 text-amber-700 border border-amber-100'
+                          ? 'bg-green-50 text-green-700 border border-green-100'
+                          : 'bg-amber-50 text-amber-700 border border-amber-100'
                           }`}>
                           {f.status === 'Ativo' ? 'Apto' : 'Férias'}
                         </span>
