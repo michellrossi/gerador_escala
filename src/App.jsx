@@ -305,7 +305,12 @@ export default function App() {
           // 3. Desempate: quem trabalhou a mais tempo no geral (ultimaEscala mais antiga ou null)
           const aUltima = a.ultimaEscala || 0;
           const bUltima = b.ultimaEscala || 0;
-          return aUltima - bUltima;
+          if (aUltima !== bUltima) {
+            return aUltima - bUltima;
+          }
+          
+          // 4. Desempate final: ordem da lista manual
+          return (a.ordem ?? 0) - (b.ordem ?? 0);
         });
     };
   }, [fiscais, estatisticasFiscais]);
@@ -646,7 +651,7 @@ export default function App() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {POSTURAS.map(p => {
-                  const fila = obterFilaPostura(p.nome);
+                  const fila = obterFilaPostura(p.nome, dataComando);
                   return (
                     <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col transition-all hover:shadow-md hover:border-slate-200">
                       <div className="p-4 bg-slate-900 text-white flex justify-between items-start">
