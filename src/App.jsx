@@ -100,6 +100,10 @@ export default function App() {
   });
   const [notification, setNotification] = useState(null);
 
+  // Filtros do Histórico
+  const [filtroFiscalHistorico, setFiltroFiscalHistorico] = useState('');
+  const [filtroPosturaHistorico, setFiltroPosturaHistorico] = useState('');
+
   // Drag and Drop e Ordenação
   const [sortDirection, setSortDirection] = useState(null);
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -380,6 +384,15 @@ export default function App() {
     if (sugerirFiscais.length <= 1) return [];
     return sugerirFiscais.slice(1, 4);
   }, [sugerirFiscais]);
+
+  // Filtragem dinâmica do histórico com base nos filtros selecionados pelo usuário
+  const historicoFiltrado = useMemo(() => {
+    return historico.filter(log => {
+      const matchFiscal = !filtroFiscalHistorico || String(log.rf).trim() === filtroFiscalHistorico;
+      const matchPostura = !filtroPosturaHistorico || String(log.postura).trim().toLowerCase() === filtroPosturaHistorico.toLowerCase();
+      return matchFiscal && matchPostura;
+    });
+  }, [historico, filtroFiscalHistorico, filtroPosturaHistorico]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -1031,14 +1044,65 @@ export default function App() {
                   Registro de Comandos Realizados
                 </h2>
               </div>
+
+              {/* Filtros de Histórico */}
+              {historico.length > 0 && (
+                <div className="p-5 border-b border-slate-100 bg-slate-50/20 flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Filtrar por Fiscal</label>
+                    <select
+                      value={filtroFiscalHistorico}
+                      onChange={(e) => setFiltroFiscalHistorico(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <option value="">Todos os Fiscais</option>
+                      {[...fiscais]
+                        .sort((a, b) => a.nome.localeCompare(b.nome))
+                        .map(f => (
+                          <option key={f.id} value={String(f.rf).trim()}>{f.nome} (RF {f.rf})</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Filtrar por Postura</label>
+                    <select
+                      value={filtroPosturaHistorico}
+                      onChange={(e) => setFiltroPosturaHistorico(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <option value="">Todas as Posturas</option>
+                      {POSTURAS.map(p => (
+                        <option key={p.id} value={p.nome}>{p.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               {historico.length === 0 ? (
                 <div className="p-16 text-center text-slate-400">
                   <Clock size={40} className="mx-auto mb-3 opacity-10" />
                   <p className="text-sm font-semibold">Nenhum comando registrado ainda no banco.</p>
                 </div>
+              ) : historicoFiltrado.length === 0 ? (
+                <div className="p-16 text-center text-slate-400">
+                  <AlertCircle size={40} className="mx-auto mb-3 text-slate-300 opacity-60" />
+                  <p className="text-sm font-semibold">Nenhum registro encontrado para os filtros selecionados.</p>
+                  <button 
+                    onClick={() => {
+                      setFiltroFiscalHistorico('');
+                      setFiltroPosturaHistorico('');
+                    }}
+                    className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-all"
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {historico.map(log => (
+                  {historicoFiltrado.map(log => (
                     <div key={log.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/30">
                       <div className="flex items-center gap-4">
                         <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
