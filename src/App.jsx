@@ -249,23 +249,26 @@ export default function App() {
     
     // Inicializa a estrutura para todos os fiscais
     fiscais.forEach(f => {
-      stats[f.rf] = {
+      const rfStr = String(f.rf).trim();
+      stats[rfStr] = {
         totalGeral: 0,
         porPostura: {}
       };
       POSTURAS.forEach(p => {
-        stats[f.rf].porPostura[p.nome] = 0;
+        stats[rfStr].porPostura[p.nome.trim().toLowerCase()] = 0;
       });
     });
 
     // Processa os dados a partir do histórico recebido do Firestore
     historico.forEach(log => {
-      if (stats[log.rf]) {
-        stats[log.rf].totalGeral += 1;
-        if (stats[log.rf].porPostura[log.postura] !== undefined) {
-          stats[log.rf].porPostura[log.postura] += 1;
+      const rfStr = String(log.rf).trim();
+      if (stats[rfStr]) {
+        stats[rfStr].totalGeral += 1;
+        const posturaLog = String(log.postura).trim().toLowerCase();
+        if (stats[rfStr].porPostura[posturaLog] !== undefined) {
+          stats[rfStr].porPostura[posturaLog] += 1;
         } else {
-          stats[log.rf].porPostura[log.postura] = 1;
+          stats[rfStr].porPostura[posturaLog] = 1;
         }
       }
     });
@@ -279,8 +282,8 @@ export default function App() {
       return [...fiscais]
         .filter(f => f.status === 'Ativo')
         .map(f => {
-          const stats = estatisticasFiscais[f.rf] || { porPostura: {}, totalGeral: 0 };
-          const realizacoesDaPostura = stats.porPostura[posturaNome] || 0;
+          const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
+          const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
           const statusBloqueio = checkBloqueioDescanso(f.ultimaEscala, dataReferencia);
           
           return {
@@ -292,24 +295,19 @@ export default function App() {
           };
         })
         .sort((a, b) => {
-          // 1. Quem NÃO está bloqueado vem primeiro
-          if (a.isBloqueado !== b.isBloqueado) {
-            return a.isBloqueado ? 1 : -1;
-          }
-          
-          // 2. Quem fez essa postura menos vezes vem primeiro
+          // 1. Quem fez essa postura menos vezes vem primeiro (rodízio rigoroso)
           if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
             return a.realizacoesDaPostura - b.realizacoesDaPostura;
           }
           
-          // 3. Desempate: quem trabalhou a mais tempo no geral (ultimaEscala mais antiga ou null)
+          // 2. Desempate: quem trabalhou a mais tempo no geral (ultimaEscala mais antiga ou null)
           const aUltima = a.ultimaEscala || 0;
           const bUltima = b.ultimaEscala || 0;
           if (aUltima !== bUltima) {
             return aUltima - bUltima;
           }
           
-          // 4. Desempate final: ordem da lista manual
+          // 3. Desempate final: ordem da lista manual
           return (a.ordem ?? 0) - (b.ordem ?? 0);
         });
     };
@@ -320,6 +318,20 @@ export default function App() {
     if (!selectedPostura) return [];
     return obterFilaPostura(selectedPostura.nome, dataComando);
   }, [selectedPostura, obterFilaPostura, dataComando]);
+
+  // O mais indicado é o primeiro fiscal da fila da postura que NÃO está bloqueado.
+  // Se todos estiverem bloqueados, sugerimos o primeiro da fila (mais antigo).
+  const fiscalIndicado = useMemo(() => {
+    if (sugerirFiscais.length === 0) return null;
+    const unblocked = sugerirFiscais.find(f => !f.isBloqueado);
+    return unblocked || sugerirFiscais[0];
+  }, [sugerirFiscais]);
+
+  // Próximos na fila de prioridade (excluindo o indicado atual)
+  const proximosFiscais = useMemo(() => {
+    if (!fiscalIndicado) return [];
+    return sugerirFiscais.filter(f => f.id !== fiscalIndicado.id).slice(0, 3);
+  }, [sugerirFiscais, fiscalIndicado]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -891,9 +903,9 @@ export default function App() {
                       <ArrowUpCircle size={120} />
                     </div>
                     
-                    {sugerirFiscais.length > 0 ? (
+                    {fiscalIndicado ? (
                       <div className="relative z-10">
-                        {sugerirFiscais[0].isBloqueado ? (
+                        {fiscalIndicado.isBloqueado ? (
                           <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
                             <AlertCircle size={16} className="text-red-400 shrink-0" />
                             <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam nos últimos 15 dias! Sugerindo o mais antigo.</span>
@@ -903,14 +915,14 @@ export default function App() {
                             <AlertCircle size={13} /> Fiscal mais indicado para {selectedPostura.nome}
                           </p>
                         )}
-                        <h3 className="text-2xl font-extrabold tracking-tight mb-1">{sugerirFiscais[0].nome}</h3>
+                        <h3 className="text-2xl font-extrabold tracking-tight mb-1">{fiscalIndicado.nome}</h3>
                         <p className="text-slate-400 text-xs mb-6">
-                          RF {sugerirFiscais[0].rf} • Total de comandos: {sugerirFiscais[0].totalGeral}
+                          RF {fiscalIndicado.rf} • Total de comandos: {fiscalIndicado.totalGeral}
                         </p>
                         
                         <div className="space-y-3">
                           <button 
-                            onClick={() => confirmarEscala(sugerirFiscais[0].id, selectedPostura)}
+                            onClick={() => confirmarEscala(fiscalIndicado.id, selectedPostura)}
                             className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm uppercase tracking-wider"
                           >
                             CONFIRMAR CONVOCAÇÃO
@@ -931,7 +943,7 @@ export default function App() {
                   <div className="mt-6">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Próximos Fiscais na Fila de Prioridade ({selectedPostura.nome})</p>
                     <div className="space-y-2">
-                      {sugerirFiscais.slice(1, 4).map((f, i) => (
+                      {proximosFiscais.map((f, i) => (
                         <div key={f.id} className={`flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100 shadow-xs transition-all ${f.isBloqueado ? 'bg-slate-50/60 opacity-60' : ''}`}>
                           <span className="text-xs font-semibold flex items-center gap-2">
                             <span className="text-[10px] text-slate-400 font-bold">{i + 2}º</span>
@@ -947,7 +959,7 @@ export default function App() {
                           </span>
                         </div>
                       ))}
-                      {sugerirFiscais.length <= 1 && (
+                      {proximosFiscais.length === 0 && (
                         <div className="text-center py-4 text-xs text-slate-400 font-semibold">
                           Fim da fila de rodízio
                         </div>
