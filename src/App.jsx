@@ -125,6 +125,11 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [segundosRestantesDesfazer]);
 
+  // Estados de Modais Customizados
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
+  const [resetModal, setResetModal] = useState({ isOpen: false });
+  const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
+
   // Injetar a fonte Plus Jakarta Sans
   useEffect(() => {
     const link = document.createElement('link');
