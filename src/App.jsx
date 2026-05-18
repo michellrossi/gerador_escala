@@ -623,9 +623,9 @@ export default function App() {
       </header>
 
       {/* Navigation */}
-      <div className="bg-[#f8f9fa] pt-4 px-4 sticky top-[76px] z-40">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200/80 p-2 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] md:sticky md:top-[76px] md:bottom-auto md:bg-[#f8f9fa] md:border-t-0 md:p-0 md:pt-4 md:px-4 md:shadow-none">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white p-1.5 rounded-2xl border border-slate-200/60 shadow-sm flex gap-1 overflow-x-auto">
+          <div className="flex gap-1 justify-around w-full md:bg-white md:p-1.5 md:rounded-2xl md:border md:border-slate-200/60 md:shadow-xs md:overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Visão geral', icon: TrendingUp },
               { id: 'fiscais', label: 'Fiscais', icon: Users },
@@ -638,13 +638,13 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex-1 ${
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-2.5 md:px-5 py-1.5 md:py-2.5 rounded-xl text-[9px] md:text-sm font-bold md:font-semibold transition-all whitespace-nowrap flex-1 ${
                     isActive 
-                      ? 'bg-[#f5f3ef] text-slate-800 shadow-sm' 
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                      ? 'bg-slate-100 text-slate-800 md:bg-[#f5f3ef] shadow-2xs md:shadow-sm' 
+                      : 'text-slate-400 md:text-slate-500 hover:text-slate-800 md:hover:bg-slate-50'
                   }`}
                 >
-                  <tab.icon size={16} className={isActive ? 'text-amber-600' : 'text-slate-400'} />
+                  <tab.icon size={18} className={isActive ? 'text-amber-600' : 'text-slate-400'} />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -653,7 +653,7 @@ export default function App() {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto p-4 md:p-6 pb-24">
+      <main className="max-w-5xl mx-auto p-4 md:p-6 pb-28 md:pb-24">
         
         {/* Notification Toast */}
         {notification && (
