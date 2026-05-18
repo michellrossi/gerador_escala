@@ -91,6 +91,12 @@ export default function App() {
     const tzOffset = d.getTimezoneOffset() * 60000;
     return new Date(Date.now() - tzOffset).toISOString().slice(0, 10);
   });
+  const [horarioComando, setHorarioComando] = useState(() => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  });
   const [notification, setNotification] = useState(null);
 
   // Drag and Drop e Ordenação
@@ -105,6 +111,7 @@ export default function App() {
   // Estados de Modais Customizados
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
   const [resetModal, setResetModal] = useState({ isOpen: false });
+  const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
 
   // Injetar a fonte Plus Jakarta Sans
   useEffect(() => {
@@ -321,8 +328,8 @@ export default function App() {
   const confirmarEscala = async (fiscalId, postura) => {
     if (!user) return;
     
-    // Converter dataComando (YYYY-MM-DD) para Objeto Date no Meio-Dia Local para evitar desvios de fuso horário
-    const dataObjeto = new Date(dataComando + 'T12:00:00');
+    // Combinar dataComando (YYYY-MM-DD) e horarioComando (HH:MM)
+    const dataObjeto = new Date(`${dataComando}T${horarioComando || '12:00'}:00`);
     const dataIso = dataObjeto.toISOString();
     const timestampComando = dataObjeto.getTime();
     
@@ -377,6 +384,7 @@ export default function App() {
 
       setNovoNome('');
       setNovoRF('');
+      setAddFiscalModalOpen(false);
       showNotification("Novo fiscal cadastrado no banco!");
     } catch (e) {
       console.error("Erro ao adicionar fiscal:", e);
@@ -657,9 +665,6 @@ export default function App() {
                                 )}
                               </div>
                             </div>
-                            <span className="px-2 py-0.5 rounded bg-white border border-slate-200/80 text-[10px] font-extrabold text-slate-500 shadow-xs">
-                              {f.realizacoesDaPostura}x
-                            </span>
                           </div>
                         ))}
                         {fila.length === 0 && (
@@ -680,62 +685,7 @@ export default function App() {
         {activeTab === 'fiscais' && (
           <div className="space-y-6">
             
-            {/* Formulário de Novo Fiscal */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="font-extrabold text-sm text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <UserPlus size={16} className="text-amber-500" />
-                Cadastrar Novo Fiscal de Posturas
-              </h3>
-              
-              <form onSubmit={handleAdicionarFiscal} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Nome Completo</label>
-                  <input 
-                    type="text" 
-                    value={novoNome}
-                    onChange={(e) => setNovoNome(e.target.value)}
-                    placeholder="Ex: Carlos Pachá"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-medium transition-all"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Registro Funcional (RF)</label>
-                  <input 
-                    type="text" 
-                    value={novoRF}
-                    onChange={(e) => setNovoRF(e.target.value)}
-                    placeholder="Ex: 7330871"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-medium transition-all"
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <UserPlus size={15} />
-                  Adicionar Fiscal
-                </button>
-              </form>
-
-              {formErro && (
-                <p className="text-red-500 text-xs font-semibold mt-3 flex items-center gap-1">
-                  <AlertCircle size={14} /> {formErro}
-                </p>
-              )}
-            </div>
-
-            {/* Dica */}
-            <div className="bg-amber-50 border border-amber-200/60 p-4 rounded-2xl flex items-start gap-3">
-              <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
-              <div>
-                <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide">Instruções de Organização</h4>
-                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                  Para reordenar a fila manualmente, clique no ícone <GripVertical className="inline text-amber-600" size={14} /> e arraste o fiscal. Para ordenar estaticamente por pontos, clique no título <strong>"Pontuação Acumulada"</strong>.
-                </p>
-              </div>
-            </div>
+             
 
             {/* Lista com Tabela */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -875,14 +825,25 @@ export default function App() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <div className="mb-5">
-                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Data do Comando</label>
-                    <input 
-                      type="date"
-                      value={dataComando}
-                      onChange={(e) => setDataComando(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
-                    />
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Data do Comando</label>
+                      <input 
+                        type="date"
+                        value={dataComando}
+                        onChange={(e) => setDataComando(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Horário de Início</label>
+                      <input 
+                        type="time"
+                        value={horarioComando}
+                        onChange={(e) => setHorarioComando(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
+                      />
+                    </div>
                   </div>
 
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">1. Escolha a Postura a Realizar</label>
@@ -933,7 +894,7 @@ export default function App() {
                         )}
                         <h3 className="text-2xl font-extrabold tracking-tight mb-1">{sugerirFiscais[0].nome}</h3>
                         <p className="text-slate-400 text-xs mb-6">
-                          RF {sugerirFiscais[0].rf} • Fez essa postura: <strong className="text-white">{sugerirFiscais[0].realizacoesDaPostura}x</strong> • Total geral: {sugerirFiscais[0].totalGeral} comandos
+                          RF {sugerirFiscais[0].rf} • Total de comandos: {sugerirFiscais[0].totalGeral}
                         </p>
                         
                         <div className="space-y-3">
@@ -971,7 +932,7 @@ export default function App() {
                             )}
                           </span>
                           <span className="text-[11px] bg-slate-50 px-2.5 py-1 rounded border border-slate-200/80 text-slate-500 font-extrabold shadow-2xs">
-                            {f.realizacoesDaPostura}x
+                            {f.totalGeral} com.
                           </span>
                         </div>
                       ))}
@@ -1017,16 +978,12 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between md:justify-end gap-6">
-                        <div className="text-right">
-                          <p className="text-xs font-bold text-slate-700">+{log.peso} Pontos</p>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Carga do Comando</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold text-slate-600">
+                        <div className="text-right bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
+                          <p className="text-xs font-bold text-slate-700">
                             {new Date(log.data).toLocaleDateString('pt-BR')}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">
-                            {new Date(log.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">
+                            às {new Date(log.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>
@@ -1114,6 +1071,91 @@ export default function App() {
                 Confirmar Reinício
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botão Flutuante (FAB) para Cadastrar Novo Fiscal */}
+      {activeTab === 'fiscais' && (
+        <button
+          onClick={() => {
+            setFormErro('');
+            setNovoNome('');
+            setNovoRF('');
+            setAddFiscalModalOpen(true);
+          }}
+          className="fixed bottom-14 right-6 z-40 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-5 py-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2 border border-amber-400 group"
+          title="Cadastrar Novo Fiscal"
+        >
+          <UserPlus size={20} className="transition-transform group-hover:rotate-6" />
+          <span className="text-xs uppercase tracking-wider font-black hidden md:inline">Cadastrar Fiscal</span>
+        </button>
+      )}
+
+      {/* MODAL POPUP: CADASTRAR NOVO FISCAL */}
+      {addFiscalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-5">
+              <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                <UserPlus className="text-amber-500" size={20} />
+                Cadastrar Novo Fiscal
+              </h3>
+              <button 
+                onClick={() => setAddFiscalModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAdicionarFiscal} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Nome Completo</label>
+                <input 
+                  type="text" 
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  placeholder="Ex: Carlos Alberto"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Registro Funcional (RF)</label>
+                <input 
+                  type="text" 
+                  value={novoRF}
+                  onChange={(e) => setNovoRF(e.target.value)}
+                  placeholder="Ex: 7330871"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
+                  required
+                />
+              </div>
+
+              {formErro && (
+                <p className="text-red-500 text-xs font-semibold mt-2 flex items-center gap-1">
+                  <AlertCircle size={14} className="shrink-0" /> {formErro}
+                </p>
+              )}
+
+              <div className="flex gap-3 justify-end pt-3">
+                <button 
+                  type="button"
+                  onClick={() => setAddFiscalModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+                >
+                  Adicionar Fiscal
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
