@@ -328,7 +328,7 @@ export default function App() {
       });
       const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
 
-      return activeFiscais
+      const listMapeada = activeFiscais
         .map(f => {
           const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
           const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
@@ -367,15 +367,28 @@ export default function App() {
             isBloqueadoLabel: label,
             grupo
           };
-        })
-        .sort((a, b) => {
-          // Ordena pelo grupo de prioridade (1, depois 2, depois 3)
-          if (a.grupo !== b.grupo) {
-            return a.grupo - b.grupo;
-          }
-          // Desempate final: ordem estrita da lista mãe manual
-          return (a.ordem ?? 0) - (b.ordem ?? 0);
         });
+
+      listMapeada.sort((a, b) => {
+        // Ordena pelo grupo de prioridade (1, depois 2, depois 3)
+        if (a.grupo !== b.grupo) {
+          return a.grupo - b.grupo;
+        }
+        // Desempate final: ordem estrita da lista mãe manual
+        return (a.ordem ?? 0) - (b.ordem ?? 0);
+      });
+
+      // Se todos os aptos (grupo !== 3) estão sob quarentena (grupo === 2)
+      const aptos = listMapeada.filter(f => f.grupo !== 3);
+      const todosEmQuarentena = aptos.length > 0 && aptos.every(f => f.grupo === 2);
+
+      if (todosEmQuarentena && listMapeada.length > 0) {
+        // Promove o 1º da fila (desbloqueia visualmente)
+        listMapeada[0].isBloqueado = false;
+        listMapeada[0].isBloqueadoLabel = '';
+      }
+
+      return listMapeada;
     };
   }, [fiscais, estatisticasFiscais]);
 
@@ -403,36 +416,37 @@ export default function App() {
 
     // Lista de fiscais ativos
     const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
-    // Ordena pela fila manual da lista mãe
-    const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-    // Encontra quem está antes do fiscal indicado na fila da lista mãe
-    const anteriores = listMaeOrdenada.filter(f => (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0));
-
-    // Encontra se algum fiscal anterior foi pulado especificamente por Bloqueio de Postura (Grupo 3)
-    const puladosPorPostura = anteriores.filter(f => {
-      const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-      const realizacoesDaPostura = stats.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
-
-      // Encontra o mínimo de realizações desta postura
-      const realizacoesList = activeFiscais.map(act => {
-        const s = estatisticasFiscais[String(act.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-        return s.porPostura[selectedPostura.nome.trim().toLowerCase()] || 0;
+    // O fiscal indicado deveria ser o 1º da lista mãe entre os aptos?
+    // Pegar o primeiro da lista mãe que está no grupo 1 ou 2 (não bloqueado por postura)
+    const primeiroListaMaeApto = [...activeFiscais]
+      .filter(f => f.status === 'Ativo')
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .find(f => {
+        const fNaFila = sugerirFiscais.find(sf => sf.id === f.id);
+        return fNaFila && fNaFila.grupo !== 3; // apto para a postura
       });
-      const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
 
-      return realizacoesDaPostura > minRealizacoes; // Bloqueado por postura
-    });
-
-    // Se houver algum fiscal pulado por bloqueio de postura, detalhamos
-    if (puladosPorPostura.length > 0) {
-      const primeiroPulado = puladosPorPostura[0];
-      return `O fiscal ${primeiroPulado.nome} seria o próximo da lista mãe, mas já realizou esta postura recentemente (bloqueado por rodízio). Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    if (primeiroListaMaeApto?.id === fiscalIndicado.id) {
+      // É realmente o próximo — mensagem simples
+      return `Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
     }
 
-    // Caso padrão de fluxo natural
+    // Há alguém antes dele na lista mãe que foi pulado — verificar motivo
+    const pulados = sugerirFiscais.filter(f =>
+      (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
+    );
+    const puladoPorPostura = pulados.find(f => f.grupo === 3);
+    const puladoPorQuarentena = pulados.find(f => f.grupo === 2);
+
+    if (puladoPorPostura) {
+      return `${puladoPorPostura.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    }
+    if (puladoPorQuarentena && todosAptosEmQuarentena) {
+      return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
+    }
     return `Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
-  }, [fiscalIndicado, fiscais, estatisticasFiscais, dataComando, selectedPostura]);
+  }, [fiscalIndicado, fiscais, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
@@ -485,7 +499,13 @@ export default function App() {
         createdAt: Date.now() // Timestamp para desempate preciso
       });
 
-      // Salva o último comando para a opção de Desfazer
+      // Salva o último comando para a opção de Desfazer e alerta se o desfazer do anterior for cancelado
+      if (ultimoComandoGravado && segundosRestantesDesfazer > 0) {
+        showNotification(`Desfazer anterior cancelado. Nova escala gravada para ${fiscalAlvo.nome}!`);
+      } else {
+        showNotification(`Escala de ${fiscalAlvo.nome} confirmada e gravada no banco!`);
+      }
+
       setUltimoComandoGravado({
         id: docRef.id,
         fiscalNome: fiscalAlvo.nome,
@@ -494,8 +514,6 @@ export default function App() {
         timestamp: Date.now()
       });
       setSegundosRestantesDesfazer(30);
-
-      showNotification(`Escala de ${fiscalAlvo.nome} confirmada e gravada no banco!`);
     } catch (e) {
       console.error("Erro ao gravar escala:", e);
       showNotification("Falha ao gravar no Firebase.");
@@ -1036,7 +1054,7 @@ export default function App() {
 
                     {fiscalIndicado ? (
                       <div className="relative z-10">
-                        {fiscalIndicado.isBloqueado && todosAptosEmQuarentena ? (
+                        {todosAptosEmQuarentena ? (
                           <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
                             <AlertCircle size={16} className="text-red-400 shrink-0" />
                             <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam nos últimos 15 dias! Sugerindo o mais antigo.</span>
