@@ -52,8 +52,8 @@ const POSTURAS = [
   { id: 2, nome: 'Feira Livre', categoria: 'Pesado', periodo: 'Diurno' },
   { id: 3, nome: 'Ambulantes', categoria: 'Pesado', periodo: 'Misto' },
   { id: 4, nome: 'Funcionamento após 1h', categoria: 'Pesado', periodo: 'Noturno' },
-  { id: 5, nome: 'Atividade (08h às 19h)', categoria: 'Leve', periodo: 'Diurno' },
-  { id: 6, nome: 'Atividade (pós 19h)', categoria: 'Médio', periodo: 'Noturno' },
+  { id: 5, nome: 'Atividade (08h às 17h)', categoria: 'Leve', periodo: 'Diurno' },
+  { id: 6, nome: 'Atividade (pós 17h)', categoria: 'Médio', periodo: 'Noturno' },
 ];
 
 const FISCAIS_INICIAIS_SEMENTE = [
@@ -358,7 +358,7 @@ export default function App() {
       const dataRefStr = typeof dataReferencia === 'string'
         ? dataReferencia
         : new Date(dataReferencia).toLocaleDateString('en-CA');
-      
+
       const activeFiscais = fiscais.filter(f => !checkFiscalDeFerias(f, dataRefStr));
 
       // 1. Encontrar o mínimo de realizações desta postura entre os ATIVOS
@@ -468,13 +468,13 @@ export default function App() {
     return historico.filter(log => {
       const matchFiscal = !filtroFiscalHistorico || String(log.rf).trim() === filtroFiscalHistorico;
       const matchPostura = !filtroPosturaHistorico || String(log.postura).trim().toLowerCase() === filtroPosturaHistorico.toLowerCase();
-      
+
       let matchMes = true;
       if (filtroMesHistorico !== '') {
         const dataLog = new Date(log.data);
         matchMes = dataLog.getMonth().toString() === filtroMesHistorico;
       }
-      
+
       return matchFiscal && matchPostura && matchMes;
     });
   }, [historico, filtroFiscalHistorico, filtroPosturaHistorico, filtroMesHistorico]);
@@ -1009,7 +1009,7 @@ export default function App() {
                               const hojeStr = new Date().toLocaleDateString('en-CA');
                               const deFeriasHoje = checkFiscalDeFerias(fiscal, hojeStr);
                               const temFeriasAgendadas = fiscal.feriasInicio && fiscal.feriasFim;
-                              
+
                               if (deFeriasHoje) {
                                 return (
                                   <div className="flex flex-col gap-0.5">
@@ -1056,7 +1056,7 @@ export default function App() {
                                   onClick={() => handleAbrirModalFerias(fiscal)}
                                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent"
                                 >
-                                  Programar Férias
+                                  Programar Trava
                                 </button>
                               )}
 
@@ -1633,7 +1633,7 @@ export default function App() {
             <div className="flex justify-between items-start mb-5">
               <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
                 <Palmtree className="text-amber-500" size={20} />
-                Programar Férias
+                Programar Trava
               </h3>
               <button
                 onClick={() => setFeriasModal({ isOpen: false, fiscal: null })}
@@ -1690,12 +1690,12 @@ export default function App() {
                         const inicio = feriasInicioInput ? new Date(`${feriasInicioInput}T12:00:00`) : new Date();
                         const fim = new Date(inicio);
                         fim.setDate(inicio.getDate() + (op.dias - 1));
-                        
+
                         if (!feriasInicioInput) {
                           const hoje = new Date().toLocaleDateString('en-CA');
                           setFeriasInicioInput(hoje);
                         }
-                        
+
                         setFeriasFimInput(fim.toLocaleDateString('en-CA'));
                       }}
                       className="px-3 py-2 bg-slate-50 border border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-slate-600 hover:text-amber-700 rounded-xl text-xs font-bold transition-all"
@@ -1724,7 +1724,7 @@ export default function App() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
                 >
-                  Programar Férias
+                  Programar Trava
                 </button>
               </div>
             </form>
