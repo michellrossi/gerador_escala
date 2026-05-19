@@ -54,7 +54,7 @@ const POSTURAS = [
   { id: 3, nome: 'Ambulantes', categoria: 'Pesado', periodo: 'Misto' },
   { id: 4, nome: 'Funcionamento após 1h', categoria: 'Pesado', periodo: 'Noturno' },
   { id: 5, nome: 'Atividade (08h às 17h)', categoria: 'Leve', periodo: 'Diurno' },
-  { id: 6, nome: 'Atividade (pós 17h)', categoria: 'Médio', periodo: 'Noturno' },
+  { id: 6, nome: 'Atividade (após às 17h)', categoria: 'Médio', periodo: 'Noturno' },
 ];
 
 const FISCAIS_INICIAIS_SEMENTE = [
@@ -614,7 +614,7 @@ export default function App() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text("Prefeitura de São Paulo • Escalador Justo de Posturas", 14, 26);
+      doc.text("Prefeitura de São Paulo", 14, 26);
 
       const dataEmissao = new Date().toLocaleString('pt-BR');
       doc.text(`Emitido em: ${dataEmissao}`, 14, 31);
@@ -1202,6 +1202,7 @@ export default function App() {
                       <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Horário de Início</label>
                       <input
                         type="time"
+                        step="1800"
                         value={horarioComando}
                         onChange={(e) => setHorarioComando(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
