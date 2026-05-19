@@ -129,6 +129,17 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
   const [resetModal, setResetModal] = useState({ isOpen: false });
   const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
+  const [senhaModal, setSenhaModal] = useState({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' });
+
+  const handleConfirmarComSenha = (e) => {
+    if (e) e.preventDefault();
+    if (senhaModal.senhaDigitada === '123456') { // Senha padrão: 123456
+      confirmarEscala(senhaModal.fiscalId, senhaModal.postura);
+      setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' });
+    } else {
+      setSenhaModal(prev => ({ ...prev, erro: 'Senha incorreta. Tente novamente.' }));
+    }
+  };
 
   // Injetar a fonte Plus Jakarta Sans
   useEffect(() => {
@@ -1037,7 +1048,7 @@ export default function App() {
 
                         <div className="space-y-3">
                           <button
-                            onClick={() => confirmarEscala(fiscalIndicado.id, selectedPostura)}
+                            onClick={() => setSenhaModal({ isOpen: true, fiscalId: fiscalIndicado.id, postura: selectedPostura, senhaDigitada: '', erro: '' })}
                             className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm uppercase tracking-wider"
                           >
                             CONFIRMAR CONVOCAÇÃO
@@ -1302,6 +1313,67 @@ export default function App() {
                 Confirmar Exclusão
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CUSTOMIZADO: SEGURANÇA - CONFIRMAR COM SENHA */}
+      {senhaModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                <ShieldCheck className="text-amber-500" size={20} />
+                Segurança: Convocação
+              </h3>
+              <button
+                onClick={() => setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' })}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+              Esta ação exige autorização. Por favor, insira a senha de segurança para confirmar a convocação do fiscal.
+            </p>
+
+            <form onSubmit={handleConfirmarComSenha} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Senha de Segurança</label>
+                <input
+                  type="password"
+                  value={senhaModal.senhaDigitada}
+                  onChange={(e) => setSenhaModal(prev => ({ ...prev, senhaDigitada: e.target.value, erro: '' }))}
+                  placeholder="Digite a senha"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              {senhaModal.erro && (
+                <p className="text-red-500 text-xs font-semibold mt-2 flex items-center gap-1">
+                  <AlertCircle size={14} className="shrink-0" /> {senhaModal.erro}
+                </p>
+              )}
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' })}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
