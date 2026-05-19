@@ -21,7 +21,8 @@ import {
   UserPlus,
   X,
   Loader2,
-  BarChart3
+  BarChart3,
+  FileDown
 } from 'lucide-react';
 
 // Importações nativas do pacote npm do Firebase para compatibilidade completa no ambiente React
@@ -593,6 +594,103 @@ export default function App() {
     } catch (e) {
       console.error("Erro ao desfazer comando:", e);
       showNotification("Erro ao desfazer a convocação.");
+    }
+  };
+
+  // Função para exportar o histórico filtrado em formato PDF
+  const exportarPDF = async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+
+      // Cabeçalho Principal do PDF
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42); // Slate-900
+      doc.text("Relatório de Comandos Realizados", 14, 20);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Prefeitura de São Paulo • Escalador Justo de Posturas", 14, 26);
+
+      const dataEmissao = new Date().toLocaleString('pt-BR');
+      doc.text(`Emitido em: ${dataEmissao}`, 14, 31);
+
+      // Linha divisória
+      doc.setDrawColor(226, 232, 240); // Slate-200
+      doc.line(14, 35, 196, 35);
+
+      // Informações sobre filtros ativos
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105); // Slate-600
+      doc.text("Filtros Aplicados:", 14, 42);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+
+      const filtros = [];
+      if (filtroFiscalHistorico) {
+        const fiscalObj = fiscais.find(f => String(f.rf).trim() === filtroFiscalHistorico);
+        filtros.push(`Fiscal: ${fiscalObj ? fiscalObj.nome : filtroFiscalHistorico}`);
+      } else {
+        filtros.push("Fiscal: Todos");
+      }
+
+      if (filtroPosturaHistorico) {
+        filtros.push(`Postura: ${filtroPosturaHistorico}`);
+      } else {
+        filtros.push("Postura: Todas");
+      }
+
+      if (filtroMesHistorico !== '') {
+        const mesObj = MESES.find(m => m.valor === filtroMesHistorico);
+        filtros.push(`Mês: ${mesObj ? mesObj.nome : filtroMesHistorico}`);
+      } else {
+        filtros.push("Mês: Todos");
+      }
+
+      doc.text(filtros.join("   |   "), 14, 48);
+
+      // Colunas e Dados da Tabela
+      const colunas = ["Fiscal", "Postura Realizada", "Nome do Comando / Observação", "Data e Horário"];
+      const linhas = historicoFiltrado.map(log => {
+        const dataLog = new Date(log.data);
+        const dataStr = dataLog.toLocaleDateString('pt-BR');
+        const horaStr = dataLog.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return [
+          log.fiscalNome,
+          log.postura,
+          log.nomeComando || "-",
+          `${dataStr} às ${horaStr}`
+        ];
+      });
+
+      // Renderização da tabela
+      autoTable(doc, {
+        head: [colunas],
+        body: linhas,
+        startY: 54,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 46 },
+          3: { cellWidth: 36 }
+        }
+      });
+
+      const dataIso = new Date().toISOString().slice(0, 10);
+      doc.save(`relatorio-comandos-${dataIso}.pdf`);
+      showNotification("PDF gerado e baixado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      showNotification("Erro ao exportar relatório em PDF.");
     }
   };
 
@@ -1230,11 +1328,20 @@ export default function App() {
         {activeTab === 'historico' && (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <h2 className="font-extrabold text-sm text-slate-700 flex items-center gap-2">
                   <History size={18} className="text-amber-500" />
                   Registro de Comandos Realizados
                 </h2>
+                {historicoFiltrado.length > 0 && (
+                  <button
+                    onClick={exportarPDF}
+                    className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-rose-100 uppercase tracking-wider shrink-0"
+                  >
+                    <FileDown size={14} />
+                    Exportar PDF ({historicoFiltrado.length})
+                  </button>
+                )}
               </div>
 
               {/* Filtros de Histórico */}
