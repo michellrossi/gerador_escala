@@ -74,6 +74,21 @@ const FISCAIS_INICIAIS_SEMENTE = [
   { id: '15', nome: 'Giancarlo Soares Ferreira', rf: '9535624', status: 'Ativo', ordem: 14 },
 ];
 
+const MESES = [
+  { valor: '0', nome: 'Janeiro' },
+  { valor: '1', nome: 'Fevereiro' },
+  { valor: '2', nome: 'Março' },
+  { valor: '3', nome: 'Abril' },
+  { valor: '4', nome: 'Maio' },
+  { valor: '5', nome: 'Junho' },
+  { valor: '6', nome: 'Julho' },
+  { valor: '7', nome: 'Agosto' },
+  { valor: '8', nome: 'Setembro' },
+  { valor: '9', nome: 'Outubro' },
+  { valor: '10', nome: 'Novembro' },
+  { valor: '11', nome: 'Dezembro' }
+];
+
 export default function App() {
   const [fiscais, setFiscais] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -98,11 +113,13 @@ export default function App() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   });
+  const [nomeComando, setNomeComando] = useState('');
   const [notification, setNotification] = useState(null);
 
   // Filtros do Histórico
   const [filtroFiscalHistorico, setFiltroFiscalHistorico] = useState('');
   const [filtroPosturaHistorico, setFiltroPosturaHistorico] = useState('');
+  const [filtroMesHistorico, setFiltroMesHistorico] = useState('');
 
   // Drag and Drop e Ordenação
   const [sortDirection, setSortDirection] = useState(null);
@@ -129,16 +146,11 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
   const [resetModal, setResetModal] = useState({ isOpen: false });
   const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
-  const [senhaModal, setSenhaModal] = useState({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' });
+  const [confirmacaoModal, setConfirmacaoModal] = useState({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' });
 
-  const handleConfirmarComSenha = (e) => {
-    if (e) e.preventDefault();
-    if (senhaModal.senhaDigitada === '123456') { // Senha padrão: 123456
-      confirmarEscala(senhaModal.fiscalId, senhaModal.postura);
-      setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' });
-    } else {
-      setSenhaModal(prev => ({ ...prev, erro: 'Senha incorreta. Tente novamente.' }));
-    }
+  const handleConfirmarConvocacao = () => {
+    confirmarEscala(confirmacaoModal.fiscalId, confirmacaoModal.postura);
+    setConfirmacaoModal({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' });
   };
 
   // Injetar a fonte Plus Jakarta Sans
@@ -439,9 +451,16 @@ export default function App() {
     return historico.filter(log => {
       const matchFiscal = !filtroFiscalHistorico || String(log.rf).trim() === filtroFiscalHistorico;
       const matchPostura = !filtroPosturaHistorico || String(log.postura).trim().toLowerCase() === filtroPosturaHistorico.toLowerCase();
-      return matchFiscal && matchPostura;
+      
+      let matchMes = true;
+      if (filtroMesHistorico !== '') {
+        const dataLog = new Date(log.data);
+        matchMes = dataLog.getMonth().toString() === filtroMesHistorico;
+      }
+      
+      return matchFiscal && matchPostura && matchMes;
     });
-  }, [historico, filtroFiscalHistorico, filtroPosturaHistorico]);
+  }, [historico, filtroFiscalHistorico, filtroPosturaHistorico, filtroMesHistorico]);
 
   // Alterar status de férias de volta ao Firebase
   const toggleFerias = async (id, statusAtual) => {
@@ -475,6 +494,7 @@ export default function App() {
         fiscalNome: fiscalAlvo.nome,
         rf: fiscalAlvo.rf,
         postura: String(postura.nome).trim(),
+        nomeComando: nomeComando.trim(),
         data: dataIso,
         createdAt: Date.now() // Timestamp para desempate preciso
       });
@@ -491,6 +511,7 @@ export default function App() {
         fiscalNome: fiscalAlvo.nome,
         rf: fiscalAlvo.rf,
         postura: postura.nome,
+        nomeComando: nomeComando.trim(),
         timestamp: Date.now()
       });
       setSegundosRestantesDesfazer(30);
@@ -999,6 +1020,17 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div className="mb-5">
+                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Nome do Comando</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Operação Centro Histórico, Fiscalização Geral"
+                      value={nomeComando}
+                      onChange={(e) => setNomeComando(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
+                    />
+                  </div>
+
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">1. Escolha a Postura a Realizar</label>
                   <div className="grid grid-cols-1 gap-2">
                     {POSTURAS.map(p => (
@@ -1053,7 +1085,7 @@ export default function App() {
 
                         <div className="space-y-3">
                           <button
-                            onClick={() => setSenhaModal({ isOpen: true, fiscalId: fiscalIndicado.id, postura: selectedPostura, senhaDigitada: '', erro: '' })}
+                            onClick={() => setConfirmacaoModal({ isOpen: true, fiscalId: fiscalIndicado.id, postura: selectedPostura, fiscalNome: fiscalIndicado.nome })}
                             className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm uppercase tracking-wider"
                           >
                             CONFIRMAR CONVOCAÇÃO
@@ -1147,6 +1179,20 @@ export default function App() {
                       ))}
                     </select>
                   </div>
+
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Filtrar por Mês</label>
+                    <select
+                      value={filtroMesHistorico}
+                      onChange={(e) => setFiltroMesHistorico(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <option value="">Todos os Meses</option>
+                      {MESES.map(m => (
+                        <option key={m.valor} value={m.valor}>{m.nome}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
@@ -1163,6 +1209,7 @@ export default function App() {
                     onClick={() => {
                       setFiltroFiscalHistorico('');
                       setFiltroPosturaHistorico('');
+                      setFiltroMesHistorico('');
                     }}
                     className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-all"
                   >
@@ -1175,7 +1222,9 @@ export default function App() {
                     <div key={log.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/30">
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-[11px] sm:text-sm text-slate-800 truncate">{log.fiscalNome}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider truncate mt-0.5">{log.postura}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider truncate mt-0.5">
+                          {log.postura} {log.nomeComando ? `• ${log.nomeComando}` : ''}
+                        </p>
                       </div>
                       <div className="shrink-0 text-right bg-slate-50 border border-slate-100 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2">
                         <p className="text-[10px] sm:text-xs font-bold text-slate-700">
@@ -1322,63 +1371,42 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL CUSTOMIZADO: SEGURANÇA - CONFIRMAR COM SENHA */}
-      {senhaModal.isOpen && (
+      {/* MODAL CUSTOMIZADO: CONFIRMAÇÃO DE CONVOCAÇÃO */}
+      {confirmacaoModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-start mb-4">
               <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
                 <ShieldCheck className="text-amber-500" size={20} />
-                Segurança: Convocação
+                Confirmar Convocação
               </h3>
               <button
-                onClick={() => setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' })}
+                onClick={() => setConfirmacaoModal({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' })}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-              Esta ação exige autorização. Por favor, insira a senha de segurança para confirmar a convocação do fiscal.
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              Deseja realmente confirmar a convocação do fiscal <strong className="text-slate-800">{confirmacaoModal.fiscalNome}</strong> para a postura <strong className="text-slate-800">{confirmacaoModal.postura?.nome}</strong>?
             </p>
 
-            <form onSubmit={handleConfirmarComSenha} className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Senha de Segurança</label>
-                <input
-                  type="password"
-                  value={senhaModal.senhaDigitada}
-                  onChange={(e) => setSenhaModal(prev => ({ ...prev, senhaDigitada: e.target.value, erro: '' }))}
-                  placeholder="Digite a senha"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              {senhaModal.erro && (
-                <p className="text-red-500 text-xs font-semibold mt-2 flex items-center gap-1">
-                  <AlertCircle size={14} className="shrink-0" /> {senhaModal.erro}
-                </p>
-              )}
-
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSenhaModal({ isOpen: false, fiscalId: null, postura: null, senhaDigitada: '', erro: '' })}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
-                >
-                  Confirmar
-                </button>
-              </div>
-            </form>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmacaoModal({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' })}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarConvocacao}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+              >
+                Confirmar
+              </button>
+            </div>
           </div>
         </div>
       )}
