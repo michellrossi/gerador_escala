@@ -414,48 +414,44 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Caso de descanso geral — todos os aptos estão em quarentena
+    // 1. Identificar o próximo da lista mãe geral (fiscais ativos)
+    const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
+    const listMaeOrdenada = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const proximoGeralListaMae = listMaeOrdenada[0];
+
+    // Verificar se o próximo da lista mãe geral está bloqueado por rodízio de postura (Grupo 3)
+    const proximoGeralFila = proximoGeralListaMae
+      ? sugerirFiscais.find(sf => sf.id === proximoGeralListaMae.id)
+      : null;
+    const proximoGeralBloqueadoPostura = proximoGeralFila && proximoGeralFila.grupo === 3;
+
+    // Caso de Rodízio de Postura: o próximo da lista mãe geral está bloqueado por postura específica
+    if (proximoGeralBloqueadoPostura && proximoGeralListaMae) {
+      return `O fiscal ${proximoGeralListaMae.nome} seria o próximo da lista mãe, mas já realizou esta postura recentemente (bloqueado por rodízio). Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
+    }
+
+    // Caso de Descanso Geral: todos os elegíveis estão sob quarentena
     if (todosAptosEmQuarentena) {
       return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
     }
 
-    // O "próximo natural" é o fiscal de menor ordem (lista mãe) entre todos os que NÃO estão
-    // bloqueados por postura (grupo 1 ou 2) — ou seja, quem viria primeiro ignorando quarentena.
-    const elegiveisOrdemMae = sugerirFiscais
-      .filter(f => f.grupo !== 3)
-      .slice() // cópia para não mutar
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    // 2. Filtrar os elegíveis para a postura (Grupo 1 ou 2, quem não está bloqueado por postura)
+    const elegiveis = sugerirFiscais.filter(f => f.grupo !== 3);
+    const elegiveisOrdenadosListaMae = [...elegiveis].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const primeiroElegivelListaMae = elegiveisOrdenadosListaMae[0];
 
-    if (elegiveisOrdemMae.length === 0) return null;
-
-    const proximoNatural = elegiveisOrdemMae[0];
-
-    // Caso 1 — Pulado por quarentena: o próximo natural (lista mãe) está em quarentena
-    // e o indicado não é ele, ou seja, o sistema avançou para outro.
-    if (proximoNatural.rf !== fiscalIndicado.rf && proximoNatural.grupo === 2) {
-      return `${proximoNatural.nome} seria o próximo, mas está em descanso obrigatório. Convocando ${fiscalIndicado.nome} por ser o próximo disponível.`;
+    // Caso de Fluxo Natural: o primeiro elegível da lista mãe é exatamente o indicado
+    if (primeiroElegivelListaMae?.id === fiscalIndicado.id) {
+      return null;
     }
 
-    // Caso 2 — Pulado por rodízio de postura: o primeiro da lista mãe geral
-    // está bloqueado por postura (grupo 3) e alguém com ordem maior foi indicado.
-    // Detectamos isso verificando se há fiscais de grupo 3 com ordem MENOR que o indicado,
-    // E o indicado não é o primeiro da lista mãe entre grupos 1+2 (já coberto acima).
-    // Aqui verificamos se o primeiro da lista mãe GERAL (incluindo grupo 3) é diferente do indicado.
-    const primeiroDaListaMaeGeral = sugerirFiscais
-      .slice()
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))[0];
-
-    if (
-      primeiroDaListaMaeGeral &&
-      primeiroDaListaMaeGeral.rf !== fiscalIndicado.rf &&
-      primeiroDaListaMaeGeral.grupo === 3
-    ) {
-      return `${primeiroDaListaMaeGeral.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
+    // Caso de Quarentena: o primeiro elegível está em quarentena (Grupo 2), então convocamos o indicado (Grupo 1)
+    if (primeiroElegivelListaMae) {
+      return `O fiscal ${primeiroElegivelListaMae.nome} seria o próximo da lista mãe, mas está em quarentena de descanso. Convocando ${fiscalIndicado.nome} por ser o próximo apto na fila.`;
     }
 
-    // Fluxo natural — não exibe caixa de aviso desnecessária
     return null;
-  }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
+  }, [fiscalIndicado, fiscais, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
