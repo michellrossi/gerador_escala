@@ -414,25 +414,48 @@ export default function App() {
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Fiscais com ordem menor que o indicado que estão BLOQUEADOS por postura (grupo 3)
-    const puladosPorPostura = sugerirFiscais.filter(f =>
-      f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-    );
-
-    // Só justifica se há alguém de grupo 3 antes do indicado na lista mãe
-    // E esse alguém seria o imediatamente anterior ao indicado (é o "próximo" real)
-    if (puladosPorPostura.length > 0) {
-      // Pega o de maior ordem entre os bloqueados antes do indicado
-      // (o que estaria imediatamente na frente na fila natural)
-      const maisProximo = puladosPorPostura.reduce((prev, curr) =>
-        (curr.ordem ?? 0) > (prev.ordem ?? 0) ? curr : prev
-      );
-      return `${maisProximo.nome} seria o próximo, mas já realizou esta postura recentemente. Convocando ${fiscalIndicado.nome} por ser o próximo apto.`;
-    }
-
-    // Caso de descanso geral — todos em quarentena
+    // Caso de descanso geral — todos os aptos estão em quarentena
+    // Neste caso o indicado já foi "promovido" pelo obterFilaPostura, mas ainda é quarentena excepcional
     if (todosAptosEmQuarentena) {
       return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
+    }
+
+    // Próximo natural da lista mãe = fiscal ativo com MENOR ordem, independente de grupo
+    // (é quem seria convocado num mundo sem regras de postura ou quarentena)
+    const activeFiscais = sugerirFiscais; // já contém apenas ativos, ordenados por grupo depois por ordem
+    const proximoNaturalGlobal = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))[0];
+
+    // Se o indicado é exatamente o próximo natural global, fluxo normal — sem justificativa
+    if (!proximoNaturalGlobal || proximoNaturalGlobal.id === fiscalIndicado.id) {
+      return null;
+    }
+
+    // O próximo natural foi pulado — descubra o motivo
+    if (proximoNaturalGlobal.grupo === 3) {
+      // Bloqueado por rodízio de postura: já fez esta postura mais vezes que outros
+      // Pega o fiscal de grupo 3 com MENOR ordem que o indicado (o "próximo" que foi pulado)
+      const puladosPorPostura = sugerirFiscais
+        .filter(f => f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0))
+        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+      if (puladosPorPostura.length > 0) {
+        // Monta lista dos pulados (pode ser mais de um)
+        const nomesPulados = puladosPorPostura.map(f => f.nome).join(', ');
+        return `${nomesPulados} ${puladosPorPostura.length > 1 ? 'foram pulados' : 'foi pulado'} por já ter realizado esta postura mais vezes que os demais. Convocando ${fiscalIndicado.nome} por ser o próximo apto no rodízio.`;
+      }
+    }
+
+    if (proximoNaturalGlobal.grupo === 2) {
+      // Bloqueado por quarentena: dentro dos 15 dias de descanso
+      // Pega o fiscal de grupo 2 com MENOR ordem que o indicado (o "próximo" que foi pulado)
+      const puladosPorQuarentena = sugerirFiscais
+        .filter(f => f.grupo === 2 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0))
+        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+      if (puladosPorQuarentena.length > 0) {
+        const nomesPulados = puladosPorQuarentena.map(f => f.nome).join(', ');
+        return `${nomesPulados} ${puladosPorQuarentena.length > 1 ? 'estão em descanso obrigatório' : 'está em descanso obrigatório'} (quarentena de 15 dias). Convocando ${fiscalIndicado.nome} por ser o próximo disponível.`;
+      }
     }
 
     // Fluxo natural — não exibe caixa de aviso desnecessária
