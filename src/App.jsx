@@ -90,6 +90,12 @@ const MESES = [
   { valor: '11', nome: 'Dezembro' }
 ];
 
+const HORARIOS_30MIN = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2).toString().padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h}:${m}`;
+});
+
 export default function App() {
   const [fiscais, setFiscais] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -111,7 +117,7 @@ export default function App() {
   const [horarioComando, setHorarioComando] = useState(() => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const minutes = now.getMinutes() < 30 ? '00' : '30';
     return `${hours}:${minutes}`;
   });
   const [nomeComando, setNomeComando] = useState('');
@@ -927,7 +933,7 @@ export default function App() {
               </div>
 
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Em Férias</p>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Travado</p>
                 <h3 className="text-3xl font-black text-amber-600">
                   {fiscais.filter(f => checkFiscalDeFerias(f)).length}
                 </h3>
@@ -1112,7 +1118,7 @@ export default function App() {
                                 return (
                                   <div className="flex flex-col gap-0.5">
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-100 w-fit">
-                                      <Palmtree size={10} /> Em Férias
+                                      <Palmtree size={10} /> Travado
                                     </span>
                                     <span className="text-[10px] text-slate-400 font-semibold">
                                       {new Date(`${fiscal.feriasInicio}T12:00:00`).toLocaleDateString('pt-BR')} a {new Date(`${fiscal.feriasFim}T12:00:00`).toLocaleDateString('pt-BR')}
@@ -1147,7 +1153,7 @@ export default function App() {
                                   onClick={() => handleLimparFerias(fiscal.id)}
                                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-green-600 text-white hover:bg-green-700 shadow-sm"
                                 >
-                                  Ativar / Limpar Férias
+                                  Limpar Trava
                                 </button>
                               ) : (
                                 <button
@@ -1200,13 +1206,15 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Horário de Início</label>
-                      <input
-                        type="time"
-                        step="1800"
+                      <select
                         value={horarioComando}
                         onChange={(e) => setHorarioComando(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs"
-                      />
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all shadow-xs cursor-pointer"
+                      >
+                        {HORARIOS_30MIN.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -1481,7 +1489,7 @@ export default function App() {
                           ? 'bg-green-50 text-green-700 border border-green-100'
                           : 'bg-amber-50 text-amber-700 border border-amber-100'
                           }`}>
-                          {!checkFiscalDeFerias(f) ? 'Apto' : 'Férias'}
+                          {!checkFiscalDeFerias(f) ? 'Apto' : 'Travado'}
                         </span>
                       </div>
 
