@@ -420,38 +420,30 @@ export default function App() {
       return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
     }
 
-    // Próximo natural da lista mãe = fiscal ativo com MENOR ordem, independente de grupo
-    // (é quem seria convocado num mundo sem regras de postura ou quarentena)
-    const activeFiscais = sugerirFiscais; // já contém apenas ativos, ordenados por grupo depois por ordem
-    const proximoNaturalGlobal = [...activeFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))[0];
+    // Ordena todos os fiscais ativos pela ordem da lista mãe (ignora grupos)
+    const fiscaisOrdenadosPorListaMae = [...sugerirFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-    // Se o indicado é exatamente o próximo natural global, fluxo normal — sem justificativa
-    if (!proximoNaturalGlobal || proximoNaturalGlobal.id === fiscalIndicado.id) {
-      return null;
+    // "Próximo natural absoluto" = o de menor ordem na lista mãe, sem exceção
+    const proximoNaturalAbsoluto = fiscaisOrdenadosPorListaMae[0];
+
+    // --- CASO 1: Pulo por postura (grupo 3) ---
+    // Há alguém com ordem menor que o indicado que está bloqueado por rodízio de postura.
+    // Esses foram "pulados" porque já fizeram essa postura mais vezes que os demais.
+    const puladosPorPostura = fiscaisOrdenadosPorListaMae.filter(
+      f => f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
+    );
+    if (puladosPorPostura.length > 0) {
+      const nomesPulados = puladosPorPostura.map(f => f.nome).join(', ');
+      return `${nomesPulados} ${puladosPorPostura.length > 1 ? 'foram pulados' : 'foi pulado'} por já ter realizado esta postura mais vezes que os demais. Convocando ${fiscalIndicado.nome} por ser o próximo apto no rodízio.`;
     }
 
-    // O próximo natural foi pulado — descubra o motivo
-    if (proximoNaturalGlobal.grupo === 3) {
-      // Bloqueado por rodízio de postura: já fez esta postura mais vezes que outros
-      // Pega o fiscal de grupo 3 com MENOR ordem que o indicado (o "próximo" que foi pulado)
-      const puladosPorPostura = sugerirFiscais
-        .filter(f => f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0))
-        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-
-      if (puladosPorPostura.length > 0) {
-        // Monta lista dos pulados (pode ser mais de um)
-        const nomesPulados = puladosPorPostura.map(f => f.nome).join(', ');
-        return `${nomesPulados} ${puladosPorPostura.length > 1 ? 'foram pulados' : 'foi pulado'} por já ter realizado esta postura mais vezes que os demais. Convocando ${fiscalIndicado.nome} por ser o próximo apto no rodízio.`;
-      }
-    }
-
-    if (proximoNaturalGlobal.grupo === 2) {
-      // Bloqueado por quarentena: dentro dos 15 dias de descanso
-      // Pega o fiscal de grupo 2 com MENOR ordem que o indicado (o "próximo" que foi pulado)
-      const puladosPorQuarentena = sugerirFiscais
-        .filter(f => f.grupo === 2 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0))
-        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-
+    // --- CASO 2: Pulo por quarentena ---
+    // O próximo natural absoluto não está em grupo 3 (postura ok), mas está em grupo 2 (quarentena).
+    // O indicado veio no lugar porque o natural está em descanso obrigatório.
+    if (proximoNaturalAbsoluto && proximoNaturalAbsoluto.id !== fiscalIndicado.id && proximoNaturalAbsoluto.grupo === 2) {
+      const puladosPorQuarentena = fiscaisOrdenadosPorListaMae.filter(
+        f => f.grupo === 2 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
+      );
       if (puladosPorQuarentena.length > 0) {
         const nomesPulados = puladosPorQuarentena.map(f => f.nome).join(', ');
         return `${nomesPulados} ${puladosPorQuarentena.length > 1 ? 'estão em descanso obrigatório' : 'está em descanso obrigatório'} (quarentena de 15 dias). Convocando ${fiscalIndicado.nome} por ser o próximo disponível.`;
