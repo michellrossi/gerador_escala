@@ -321,13 +321,13 @@ export default function App() {
     return (posturaNome, dataReferencia = new Date()) => {
       const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
 
-      // 1. Encontrar o mínimo de realizações desta postura entre TODOS os fiscais (incluindo férias)
-      // Isso garante que a fila não resete quando alguém entra/sai de férias.
-      const realizacoesListGlobal = fiscais.map(f => {
+      // 1. Encontrar o mínimo de realizações desta postura entre os ATIVOS
+      // Usamos apenas os ativos para evitar bloqueio total quando um fiscal de férias tem menos realizações.
+      const realizacoesListAtivos = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
         return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
       });
-      const minRealizacoes = realizacoesListGlobal.length > 0 ? Math.min(...realizacoesListGlobal) : 0;
+      const minRealizacoes = realizacoesListAtivos.length > 0 ? Math.min(...realizacoesListAtivos) : 0;
 
       const listMapeada = activeFiscais
         .map(f => {
@@ -371,11 +371,15 @@ export default function App() {
         });
 
       listMapeada.sort((a, b) => {
-        // Ordena pelo grupo de prioridade (1, depois 2, depois 3)
+        // 1º critério: grupo de prioridade (1, depois 2, depois 3)
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
-        // Desempate final: ordem estrita da lista mãe manual
+        // 2º critério: quem fez MENOS esta postura tem prioridade (garante rotação completa)
+        if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
+          return a.realizacoesDaPostura - b.realizacoesDaPostura;
+        }
+        // 3º critério: desempate pela ordem da lista mãe manual
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
