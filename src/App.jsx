@@ -410,46 +410,46 @@ export default function App() {
     return aptos.length > 0 && aptos.every(f => f.grupo === 2);
   }, [sugerirFiscais]);
 
-  // Confirmação explícita mostrando quem seria o próximo se não fosse a regra (Melhoria 3)
+  // Confirmação explícita mostrando quem seria o próximo se não fosse a regra de postura
   const justificativaEscala = useMemo(() => {
     if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Caso de descanso geral — todos os aptos estão em quarentena
-    // Neste caso o indicado já foi "promovido" pelo obterFilaPostura, mas ainda é quarentena excepcional
-    if (todosAptosEmQuarentena) {
-      return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
+    // 1. Pega a Lista Mãe Global intacta, ordenada apenas pela fila estática manual
+    const listaMaeOrdenada = [...sugerirFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+    // 2. Quem seria o próximo por "Direito Natural"?
+    // O próximo natural é o primeiro da Lista Mãe que NÃO está impedido por quarentena.
+    // (Se a regra 11 for ativada e todos aptos estiverem em quarentena, olhamos a lista toda)
+    const elegiveisNaturais = todosAptosEmQuarentena 
+      ? listaMaeOrdenada 
+      : listaMaeOrdenada.filter(f => f.grupo !== 2); // Remove apenas quem está bloqueado por tempo (Descanso)
+
+    const proximoNatural = elegiveisNaturais[0];
+
+    // Se não houver ninguém, encerra
+    if (!proximoNatural) return null;
+
+    // 3. Se o indicado pelo algoritmo for diferente do Próximo Natural, significa que
+    // o próximo natural foi rebaixado para o Grupo 3 (Bloqueio de Postura).
+    if (proximoNatural.id !== fiscalIndicado.id) {
+      
+      // Identifica todos os fiscais "naturais" que estavam na frente do indicado e foram pulados
+      const indiceDoIndicado = elegiveisNaturais.findIndex(f => f.id === fiscalIndicado.id);
+      
+      // Se por acaso o indicado não for encontrado nessa lista (ex: erro de estado), aborta o aviso
+      if (indiceDoIndicado === -1) return null;
+
+      const pulados = elegiveisNaturais.slice(0, indiceDoIndicado);
+      const nomesPulados = pulados.map(f => f.nome).join(', ');
+      const plural = pulados.length > 1;
+      
+      return `Ordem Global Afetada: A vez seria de ${nomesPulados}, mas ${plural ? 'foram pulados' : 'foi pulado(a)'} por já ter limite atingido na postura ${selectedPostura.nome}. Convocando ${fiscalIndicado.nome} para garantir a equidade.`;
     }
 
-    // Ordena todos os fiscais ativos pela ordem da lista mãe (ignora grupos)
-    const fiscaisOrdenadosPorListaMae = [...sugerirFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-
-    // "Próximo natural absoluto" = o primeiro que seria chamado SEM nenhuma restrição de postura
-    // ou quarentena, ou seja, o de menor ordem na lista mãe que NÃO esteja no grupo 3.
-    // Fiscais do grupo 3 são excluídos desta análise porque eles nunca seriam o "próximo natural"
-    // para esta postura — a regra de rodízio de postura os remove antes de qualquer comparação.
-    const elegiveisOrdenados = fiscaisOrdenadosPorListaMae.filter(f => f.grupo !== 3);
-    const proximoNatural = elegiveisOrdenados[0]; // Primeiro elegível pela lista mãe
-
-    // Se o indicado já é o próximo natural entre os elegíveis, tudo correu normalmente — sem aviso.
-    if (!proximoNatural || proximoNatural.id === fiscalIndicado.id) {
-      return null;
-    }
-
-    // Chegou aqui: o indicado NÃO é o próximo natural entre os elegíveis.
-    // Alguém elegível (grupo 1 ou 2) com ordem menor foi pulado — isso merece aviso.
-
-    // --- CASO: Pulo por quarentena ---
-    // Há elegíveis em quarentena (grupo 2) com ordem menor que o indicado.
-    const puladosPorQuarentena = fiscaisOrdenadosPorListaMae.filter(
-      f => f.grupo === 2 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-    );
-    if (puladosPorQuarentena.length > 0) {
-      const nomesPulados = puladosPorQuarentena.map(f => f.nome).join(', ');
-      return `${nomesPulados} ${puladosPorQuarentena.length > 1 ? 'estão em descanso obrigatório' : 'está em descanso obrigatório'} (quarentena de 15 dias). Convocando ${fiscalIndicado.nome} por ser o próximo disponível.`;
-    }
-
-    // Fluxo natural — não exibe caixa de aviso desnecessária
+    // Se o indicado é exatamente o próximo natural (como nos passos 1, 2, 3, 7, 8, 10, 12, etc.)
+    // O sistema segue limpo, sem exibir avisos desnecessários.
     return null;
+
   }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
