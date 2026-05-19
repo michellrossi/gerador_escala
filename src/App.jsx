@@ -321,12 +321,13 @@ export default function App() {
     return (posturaNome, dataReferencia = new Date()) => {
       const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
 
-      // 1. Encontrar o mínimo de realizações desta postura específica entre os fiscais ativos
-      const realizacoesList = activeFiscais.map(f => {
+      // 1. Encontrar o mínimo de realizações desta postura entre TODOS os fiscais (incluindo férias)
+      // Isso garante que a fila não resete quando alguém entra/sai de férias.
+      const realizacoesListGlobal = fiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
         return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
       });
-      const minRealizacoes = realizacoesList.length > 0 ? Math.min(...realizacoesList) : 0;
+      const minRealizacoes = realizacoesListGlobal.length > 0 ? Math.min(...realizacoesListGlobal) : 0;
 
       const listMapeada = activeFiscais
         .map(f => {
