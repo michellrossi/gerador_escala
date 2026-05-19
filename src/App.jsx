@@ -410,49 +410,7 @@ export default function App() {
     return aptos.length > 0 && aptos.every(f => f.grupo === 2);
   }, [sugerirFiscais]);
 
-  // Confirmação explícita mostrando quem seria o próximo se não fosse a regra (Melhoria 3)
-  const justificativaEscala = useMemo(() => {
-    if (!fiscalIndicado || !selectedPostura) return null;
 
-    // Caso de descanso geral — todos os aptos estão em quarentena
-    // Neste caso o indicado já foi "promovido" pelo obterFilaPostura, mas ainda é quarentena excepcional
-    if (todosAptosEmQuarentena) {
-      return `Todos os fiscais aptos estão em descanso. Convocando ${fiscalIndicado.nome} por ser o mais antigo disponível.`;
-    }
-
-    // Ordena todos os fiscais ativos pela ordem da lista mãe (ignora grupos)
-    const fiscaisOrdenadosPorListaMae = [...sugerirFiscais].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-
-    // "Próximo natural absoluto" = o de menor ordem na lista mãe, sem exceção
-    const proximoNaturalAbsoluto = fiscaisOrdenadosPorListaMae[0];
-
-    // --- CASO 1: Pulo por postura (grupo 3) ---
-    // Há alguém com ordem menor que o indicado que está bloqueado por rodízio de postura.
-    // Esses foram "pulados" porque já fizeram essa postura mais vezes que os demais.
-    const puladosPorPostura = fiscaisOrdenadosPorListaMae.filter(
-      f => f.grupo === 3 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-    );
-    if (puladosPorPostura.length > 0) {
-      const nomesPulados = puladosPorPostura.map(f => f.nome).join(', ');
-      return `${nomesPulados} ${puladosPorPostura.length > 1 ? 'foram pulados' : 'foi pulado'} por já ter realizado esta postura mais vezes que os demais. Convocando ${fiscalIndicado.nome} por ser o próximo apto no rodízio.`;
-    }
-
-    // --- CASO 2: Pulo por quarentena ---
-    // O próximo natural absoluto não está em grupo 3 (postura ok), mas está em grupo 2 (quarentena).
-    // O indicado veio no lugar porque o natural está em descanso obrigatório.
-    if (proximoNaturalAbsoluto && proximoNaturalAbsoluto.id !== fiscalIndicado.id && proximoNaturalAbsoluto.grupo === 2) {
-      const puladosPorQuarentena = fiscaisOrdenadosPorListaMae.filter(
-        f => f.grupo === 2 && (f.ordem ?? 0) < (fiscalIndicado.ordem ?? 0)
-      );
-      if (puladosPorQuarentena.length > 0) {
-        const nomesPulados = puladosPorQuarentena.map(f => f.nome).join(', ');
-        return `${nomesPulados} ${puladosPorQuarentena.length > 1 ? 'estão em descanso obrigatório' : 'está em descanso obrigatório'} (quarentena de 15 dias). Convocando ${fiscalIndicado.nome} por ser o próximo disponível.`;
-      }
-    }
-
-    // Fluxo natural — não exibe caixa de aviso desnecessária
-    return null;
-  }, [fiscalIndicado, sugerirFiscais, todosAptosEmQuarentena, selectedPostura]);
 
   // Próximos na fila de prioridade (excluindo o indicado atual)
   const proximosFiscais = useMemo(() => {
@@ -1075,11 +1033,7 @@ export default function App() {
                           RF {fiscalIndicado.rf} • Total de comandos: {fiscalIndicado.totalGeral}
                         </p>
 
-                        {justificativaEscala && (
-                          <div className="mb-6 p-3.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-[11px] text-amber-200/90 leading-relaxed font-medium">
-                            <span className="font-bold text-amber-400">💡 Informação da Fila:</span> {justificativaEscala}
-                          </div>
-                        )}
+
 
                         <div className="space-y-3">
                           <button
