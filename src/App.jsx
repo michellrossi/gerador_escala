@@ -148,6 +148,12 @@ export default function App() {
   const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
   const [confirmacaoModal, setConfirmacaoModal] = useState({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' });
 
+  // Novo Modal de Férias e seus estados de formulário
+  const [feriasModal, setFeriasModal] = useState({ isOpen: false, fiscal: null });
+  const [feriasInicioInput, setFeriasInicioInput] = useState('');
+  const [feriasFimInput, setFeriasFimInput] = useState('');
+  const [feriasErro, setFeriasErro] = useState('');
+
   const handleConfirmarConvocacao = () => {
     confirmarEscala(confirmacaoModal.fiscalId, confirmacaoModal.postura);
     setConfirmacaoModal({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' });
@@ -259,6 +265,13 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // Função auxiliar para verificar se o fiscal está de férias em uma determinada data (comparação de string YYYY-MM-DD)
+  const checkFiscalDeFerias = (fiscal, dataRefStr) => {
+    if (!fiscal || !fiscal.feriasInicio || !fiscal.feriasFim) return false;
+    const ref = dataRefStr || new Date().toLocaleDateString('en-CA');
+    return ref >= fiscal.feriasInicio && ref <= fiscal.feriasFim;
+  };
+
   // Função para verificar se o fiscal trabalhou nos últimos 15 dias (descanso obrigatório de 15 dias)
   const checkBloqueioDescanso = (ultimaEscala, dataReferencia = new Date()) => {
     if (!ultimaEscala) return { isBloqueado: false, label: '' };
@@ -342,7 +355,11 @@ export default function App() {
   // Função pura para retornar a fila ordenada de fiscais para uma postura específica
   const obterFilaPostura = useMemo(() => {
     return (posturaNome, dataReferencia = new Date()) => {
-      const activeFiscais = fiscais.filter(f => f.status === 'Ativo');
+      const dataRefStr = typeof dataReferencia === 'string'
+        ? dataReferencia
+        : new Date(dataReferencia).toLocaleDateString('en-CA');
+      
+      const activeFiscais = fiscais.filter(f => !checkFiscalDeFerias(f, dataRefStr));
 
       // 1. Encontrar o mínimo de realizações desta postura entre os ATIVOS
       // Usamos apenas os ativos para evitar bloqueio total quando um fiscal de férias tem menos realizações.
@@ -462,17 +479,60 @@ export default function App() {
     });
   }, [historico, filtroFiscalHistorico, filtroPosturaHistorico, filtroMesHistorico]);
 
-  // Alterar status de férias de volta ao Firebase
-  const toggleFerias = async (id, statusAtual) => {
+  // Abrir o modal de férias definindo o fiscal alvo e sugerindo data de início para hoje
+  const handleAbrirModalFerias = (fiscal) => {
+    setFeriasModal({ isOpen: true, fiscal });
+    const hoje = new Date().toLocaleDateString('en-CA');
+    setFeriasInicioInput(hoje);
+    setFeriasFimInput('');
+    setFeriasErro('');
+  };
+
+  // Limpar férias (reativar fiscal imediatamente)
+  const handleLimparFerias = async (id) => {
     if (!user) return;
     try {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', id);
       await updateDoc(docRef, {
-        status: statusAtual === 'Ativo' ? 'Férias' : 'Ativo'
+        feriasInicio: null,
+        feriasFim: null,
+        status: 'Ativo'
       });
-      showNotification("Status de escala atualizado com sucesso.");
+      showNotification("Férias canceladas/removidas com sucesso!");
     } catch (e) {
-      console.error("Erro ao atualizar férias:", e);
+      console.error("Erro ao remover férias:", e);
+      showNotification("Erro ao cancelar férias.");
+    }
+  };
+
+  // Salvar férias programadas no Firestore
+  const handleSalvarFerias = async (e) => {
+    e.preventDefault();
+    if (!user || !feriasModal.fiscal) return;
+    setFeriasErro('');
+
+    if (!feriasInicioInput || !feriasFimInput) {
+      setFeriasErro('Preencha a data de início e a data de término.');
+      return;
+    }
+
+    if (feriasFimInput < feriasInicioInput) {
+      setFeriasErro('A data de término não pode ser anterior à data de início.');
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'fiscais', feriasModal.fiscal.id);
+      await updateDoc(docRef, {
+        feriasInicio: feriasInicioInput,
+        feriasFim: feriasFimInput,
+        status: 'Férias'
+      });
+      setFeriasModal({ isOpen: false, fiscal: null });
+      showNotification(`Férias programadas para ${feriasModal.fiscal.nome}!`);
+    } catch (e) {
+      console.error("Erro ao salvar férias:", e);
+      setFeriasErro("Erro ao salvar no banco de dados.");
     }
   };
 
@@ -763,7 +823,7 @@ export default function App() {
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Fiscais Ativos</p>
                 <h3 className="text-3xl font-black text-slate-800">
-                  {fiscais.filter(f => f.status === 'Ativo').length}
+                  {fiscais.filter(f => !checkFiscalDeFerias(f)).length}
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-1">Prontos para escala</p>
               </div>
@@ -771,7 +831,7 @@ export default function App() {
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Em Férias</p>
                 <h3 className="text-3xl font-black text-amber-600">
-                  {fiscais.filter(f => f.status === 'Férias').length}
+                  {fiscais.filter(f => checkFiscalDeFerias(f)).length}
                 </h3>
                 <p className="text-[11px] text-amber-600/80 font-medium mt-1">prioridade ao retornar</p>
               </div>
@@ -945,29 +1005,60 @@ export default function App() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${fiscal.status === 'Ativo'
-                              ? 'bg-green-50 text-green-700 border border-green-100'
-                              : 'bg-amber-50 text-amber-700 border border-amber-100'
-                              }`}>
-                              {fiscal.status === 'Ativo' ? (
-                                <>Apto para Comando</>
-                              ) : (
-                                <><Palmtree size={10} /> Em Férias</>
-                              )}
-                            </span>
+                            {(() => {
+                              const hojeStr = new Date().toLocaleDateString('en-CA');
+                              const deFeriasHoje = checkFiscalDeFerias(fiscal, hojeStr);
+                              const temFeriasAgendadas = fiscal.feriasInicio && fiscal.feriasFim;
+                              
+                              if (deFeriasHoje) {
+                                return (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-100 w-fit">
+                                      <Palmtree size={10} /> Em Férias
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-semibold">
+                                      {new Date(`${fiscal.feriasInicio}T12:00:00`).toLocaleDateString('pt-BR')} a {new Date(`${fiscal.feriasFim}T12:00:00`).toLocaleDateString('pt-BR')}
+                                    </span>
+                                  </div>
+                                );
+                              } else if (temFeriasAgendadas) {
+                                return (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100 w-fit">
+                                      <Calendar size={10} /> Férias Prog.
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-semibold">
+                                      {new Date(`${fiscal.feriasInicio}T12:00:00`).toLocaleDateString('pt-BR')} a {new Date(`${fiscal.feriasFim}T12:00:00`).toLocaleDateString('pt-BR')}
+                                    </span>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-green-50 text-green-700 border border-green-100 w-fit">
+                                    Apto para Comando
+                                  </span>
+                                );
+                              }
+                            })()}
                           </td>
 
                           <td className="px-5 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => toggleFerias(fiscal.id, fiscal.status)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${fiscal.status === 'Ativo'
-                                  ? 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent'
-                                  : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
-                                  }`}
-                              >
-                                {fiscal.status === 'Ativo' ? 'Férias' : 'Ativar'}
-                              </button>
+                              {fiscal.feriasInicio && fiscal.feriasFim ? (
+                                <button
+                                  onClick={() => handleLimparFerias(fiscal.id)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-green-600 text-white hover:bg-green-700 shadow-sm"
+                                >
+                                  Ativar / Limpar Férias
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleAbrirModalFerias(fiscal)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-100 border border-transparent"
+                                >
+                                  Programar Férias
+                                </button>
+                              )}
 
                               <button
                                 onClick={() => setDeleteModal({ isOpen: true, fiscal })}
@@ -1278,11 +1369,11 @@ export default function App() {
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">RF {f.rf}</span>
                           </div>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${f.status === 'Ativo'
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${!checkFiscalDeFerias(f)
                           ? 'bg-green-50 text-green-700 border border-green-100'
                           : 'bg-amber-50 text-amber-700 border border-amber-100'
                           }`}>
-                          {f.status === 'Ativo' ? 'Apto' : 'Férias'}
+                          {!checkFiscalDeFerias(f) ? 'Apto' : 'Férias'}
                         </span>
                       </div>
 
@@ -1528,6 +1619,112 @@ export default function App() {
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
                 >
                   Adicionar Fiscal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL POPUP: PROGRAMAR FÉRIAS */}
+      {feriasModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-5">
+              <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                <Palmtree className="text-amber-500" size={20} />
+                Programar Férias
+              </h3>
+              <button
+                onClick={() => setFeriasModal({ isOpen: false, fiscal: null })}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mb-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase block mb-1">Fiscal Selecionado</span>
+              <span className="text-sm font-bold text-slate-800">{feriasModal.fiscal?.nome}</span>
+              <span className="text-xs text-slate-400 block mt-0.5">RF {feriasModal.fiscal?.rf}</span>
+            </div>
+
+            <form onSubmit={handleSalvarFerias} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Data de Início</label>
+                  <input
+                    type="date"
+                    value={feriasInicioInput}
+                    onChange={(e) => setFeriasInicioInput(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Data de Término</label>
+                  <input
+                    type="date"
+                    value={feriasFimInput}
+                    onChange={(e) => setFeriasFimInput(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Botões Rápidos */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">Atalhos de Período</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: '7 Dias', dias: 7 },
+                    { label: '15 Dias', dias: 15 },
+                    { label: '30 Dias', dias: 30 }
+                  ].map(op => (
+                    <button
+                      key={op.dias}
+                      type="button"
+                      onClick={() => {
+                        const inicio = feriasInicioInput ? new Date(`${feriasInicioInput}T12:00:00`) : new Date();
+                        const fim = new Date(inicio);
+                        fim.setDate(inicio.getDate() + (op.dias - 1));
+                        
+                        if (!feriasInicioInput) {
+                          const hoje = new Date().toLocaleDateString('en-CA');
+                          setFeriasInicioInput(hoje);
+                        }
+                        
+                        setFeriasFimInput(fim.toLocaleDateString('en-CA'));
+                      }}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-slate-600 hover:text-amber-700 rounded-xl text-xs font-bold transition-all"
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {feriasErro && (
+                <p className="text-red-500 text-xs font-semibold mt-2 flex items-center gap-1">
+                  <AlertCircle size={14} className="shrink-0" /> {feriasErro}
+                </p>
+              )}
+
+              <div className="flex gap-3 justify-end pt-3">
+                <button
+                  type="button"
+                  onClick={() => setFeriasModal({ isOpen: false, fiscal: null })}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+                >
+                  Programar Férias
                 </button>
               </div>
             </form>
