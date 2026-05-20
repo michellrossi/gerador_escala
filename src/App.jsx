@@ -25,6 +25,8 @@ import {
   FileDown
 } from 'lucide-react';
 
+import { LOGO_BASE64 } from './logoBase64';
+
 // Importações nativas do pacote npm do Firebase para compatibilidade completa no ambiente React
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -615,25 +617,31 @@ export default function App() {
 
       const doc = new jsPDF();
 
-      // Cabeçalho Principal do PDF
+      // Renderiza a imagem de cabeçalho (logo)
+      doc.addImage(LOGO_BASE64, 'PNG', 14, 8, 20, 20);
+
+      // Cabeçalho Principal do PDF (ao lado da logo)
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.setTextColor(15, 23, 42); // Slate-900
-      doc.text("Relatório de Comandos Realizados", 14, 20);
+      doc.text("Relatório de Comandos Realizados", 38, 14);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(100);
-      doc.text("Subprefeitura Penha", 14, 26);
+      doc.text("Subprefeitura Penha", 38, 19);
+
+      const dataEmissao = new Date().toLocaleString('pt-BR');
+      doc.text(`Emitido em: ${dataEmissao}`, 38, 24);
 
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.line(14, 35, 196, 35);
+      doc.line(14, 32, 196, 32);
 
       // Informações sobre filtros ativos
       doc.setFont("helvetica", "bold");
       doc.setTextColor(71, 85, 105); // Slate-600
-      doc.text("Filtros Aplicados:", 14, 42);
+      doc.text("Filtros Aplicados:", 14, 39);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
@@ -660,7 +668,7 @@ export default function App() {
         filtros.push("Mês: Todos");
       }
 
-      doc.text(filtros.join("   |   "), 14, 48);
+      doc.text(filtros.join("   |   "), 14, 44);
 
       // Colunas e Dados da Tabela
       const colunas = ["Fiscal", "Postura Realizada", "Nome do Comando / Observação", "Data e Horário"];
@@ -680,7 +688,7 @@ export default function App() {
       autoTable(doc, {
         head: [colunas],
         body: linhas,
-        startY: 54,
+        startY: 50,
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 3 },
