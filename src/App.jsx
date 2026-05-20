@@ -351,10 +351,12 @@ export default function App() {
       stats[rfStr] = {
         totalGeral: 0,
         porPostura: {},
+        ultimaEscalaPorPostura: {},
         ultimaEscala: null
       };
       POSTURAS.forEach(p => {
         stats[rfStr].porPostura[p.id] = 0;  // usa ID numerico como chave (imune a text)
+        stats[rfStr].ultimaEscalaPorPostura[p.id] = null;
       });
     });
 
@@ -384,6 +386,13 @@ export default function App() {
         if (logTime && (!stats[rfStr].ultimaEscala || logTime > stats[rfStr].ultimaEscala)) {
           stats[rfStr].ultimaEscala = logTime;
         }
+
+        // Rastreia a última escala POR POSTURA individual
+        if (logTime && posturaId !== null) {
+          if (!stats[rfStr].ultimaEscalaPorPostura[posturaId] || logTime > stats[rfStr].ultimaEscalaPorPostura[posturaId]) {
+            stats[rfStr].ultimaEscalaPorPostura[posturaId] = logTime;
+          }
+        }
       }
     });
 
@@ -408,12 +417,14 @@ export default function App() {
       });
       const minRealizacoes = realizacoesListAtivos.length > 0 ? Math.min(...realizacoesListAtivos) : 0;
 
+      const posturaId = encontrarIdPostura(posturaNome);
+
       const listMapeada = activeFiscais
         .map(f => {
-          const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
-          const posturaId = encontrarIdPostura(posturaNome);
+          const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null, ultimaEscalaPorPostura: {} };
           const realizacoesDaPostura = (posturaId !== null ? stats.porPostura[posturaId] : 0) || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
+          const ultimaEscalaDestaPostura = (posturaId !== null ? stats.ultimaEscalaPorPostura[posturaId] : null) || null;
 
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
           const isQuarentenado = statusBloqueio.isBloqueado;
@@ -444,6 +455,7 @@ export default function App() {
             realizacoesDaPostura,
             totalGeral: stats.totalGeral,
             ultimaEscala: stats.ultimaEscala,
+            ultimaEscalaDestaPostura,
             isBloqueado: isPostureBlocked || isQuarentenado,
             isBloqueadoLabel: label,
             grupo
@@ -459,7 +471,15 @@ export default function App() {
         if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
           return a.realizacoesDaPostura - b.realizacoesDaPostura;
         }
-        // 3º critério: desempate pela ordem da lista mãe manual
+        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final da fila
+        // Quem nunca fez (null) fica na frente. Isso garante que a fila continue
+        // a partir de onde parou, mesmo quando um fiscal travado é pulado.
+        const tA = a.ultimaEscalaDestaPostura || 0;
+        const tB = b.ultimaEscalaDestaPostura || 0;
+        if (tA !== tB) {
+          return tA - tB; // menor timestamp (mais antigo) = mais prioridade
+        }
+        // 4º critério: desempate final pela ordem da lista mãe manual
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
