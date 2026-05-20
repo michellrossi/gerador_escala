@@ -311,34 +311,7 @@ export default function App() {
     return ref >= fiscal.feriasInicio && ref <= fiscal.feriasFim;
   };
 
-  // Função para verificar se o fiscal trabalhou nos últimos 15 dias (descanso obrigatório de 15 dias)
-  const checkBloqueioDescanso = (ultimaEscala, dataReferencia = new Date()) => {
-    if (!ultimaEscala) return { isBloqueado: false, label: '' };
 
-    let ref;
-    if (typeof dataReferencia === 'string' && dataReferencia.includes('-')) {
-      // Evita o bug de fuso horário (UTC vs Local) ao forçar meio-dia local
-      ref = new Date(`${dataReferencia}T12:00:00`);
-    } else {
-      ref = new Date(dataReferencia);
-    }
-    ref.setHours(0, 0, 0, 0);
-
-    // Converte o timestamp para string de data no fuso local antes de comparar
-    const dataUltimaStr = new Date(ultimaEscala).toLocaleDateString('en-CA'); // "YYYY-MM-DD" local
-    const dataUltima = new Date(`${dataUltimaStr}T12:00:00`); // ancora no meio-dia, sem risco de virar dia
-    dataUltima.setHours(0, 0, 0, 0);
-
-    const diffTempo = ref - dataUltima;
-    const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
-
-    if (diffDias >= 0 && diffDias < 15) {
-      if (diffDias === 0) return { isBloqueado: true, label: 'Trabalhou Hoje' };
-      if (diffDias === 1) return { isBloqueado: true, label: 'Trabalhou Ontem' };
-      return { isBloqueado: true, label: `Descanso (${15 - diffDias}d rest.)` };
-    }
-    return { isBloqueado: false, label: '' };
-  };
 
   // Mapeia o histórico em tempo real para contar quantas vezes cada fiscal fez cada postura
   // Usa IDs numéricos como chaves para ser imune a variações de nomenclatura
@@ -423,30 +396,25 @@ export default function App() {
         .map(f => {
           const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null, ultimaEscalaPorPostura: {} };
           const realizacoesDaPostura = (posturaId !== null ? stats.porPostura[posturaId] : 0) || 0;
-          const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
           const ultimaEscalaDestaPostura = (posturaId !== null ? stats.ultimaEscalaPorPostura[posturaId] : null) || null;
 
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
-          const isQuarentenado = statusBloqueio.isBloqueado;
 
-          // Grupos de ordenação (apenas 2 grupos para manter a fila estável):
-          // Grupo 1: Elegível (apto ou quarentenado — quarentena é só visual, não muda posição)
-          // Grupo 2: Bloqueado pela Postura (já fez mais que o mínimo, deve aguardar rotação)
+          // Definição de grupos de prioridade:
+          // Grupo 1: Apto (não bloqueado pela Postura)
+          // Grupo 3: Bloqueado pela Postura (deve aguardar a rotação correspondente)
           let grupo = 1;
           let label = '';
 
           if (isPostureBlocked) {
-            grupo = 2;
+            grupo = 3;
+            // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
             const fiscaisAtras = activeFiscais.filter(other => {
               const otherStats = estatisticasFiscais[String(other.rf).trim()] || { porPostura: {}, totalGeral: 0 };
               const otherRealizacoes = (posturaId !== null ? otherStats.porPostura[posturaId] : 0) || 0;
               return otherRealizacoes < realizacoesDaPostura;
             }).length;
             label = `Aguard. ${fiscaisAtras} fisc.`;
-          } else if (isQuarentenado) {
-            // Quarentena NÃO muda o grupo — continua grupo 1
-            // Apenas marca visualmente com o label de descanso
-            label = statusBloqueio.label;
           }
 
           return {
@@ -455,39 +423,34 @@ export default function App() {
             totalGeral: stats.totalGeral,
             ultimaEscala: stats.ultimaEscala,
             ultimaEscalaDestaPostura,
-            isBloqueado: isPostureBlocked || isQuarentenado,
+            isBloqueado: isPostureBlocked,
             isBloqueadoLabel: label,
             grupo
           };
         });
 
       listMapeada.sort((a, b) => {
-        // 1º critério: elegível (grupo 1) antes de bloqueado por postura (grupo 2)
+        // 1º critério: grupo de prioridade (1, depois 2, depois 3)
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
-        // 2º critério: quem fez MENOS esta postura tem prioridade
+        // 2º critério: quem fez MENOS esta postura tem prioridade (garante rotação completa)
         if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
           return a.realizacoesDaPostura - b.realizacoesDaPostura;
         }
-        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final
+        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final da fila
+        // Quem nunca fez (null) fica na frente. Isso garante que a fila continue
+        // a partir de onde parou, mesmo quando um fiscal travado é pulado.
         const tA = a.ultimaEscalaDestaPostura || 0;
         const tB = b.ultimaEscalaDestaPostura || 0;
         if (tA !== tB) {
-          return tA - tB;
+          return tA - tB; // menor timestamp (mais antigo) = mais prioridade
         }
-        // 4º critério: desempate pela ordem manual
+        // 4º critério: desempate final pela ordem da lista mãe manual
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
-      // Se todos os elegíveis estão quarentenados, promove o 1º visualmente
-      const elegiveis = listMapeada.filter(f => f.grupo !== 2);
-      const todosEmQuarentena = elegiveis.length > 0 && elegiveis.every(f => f.isBloqueado);
 
-      if (todosEmQuarentena && listMapeada.length > 0) {
-        listMapeada[0].isBloqueado = false;
-        listMapeada[0].isBloqueadoLabel = '';
-      }
 
       return listMapeada;
     };
@@ -505,11 +468,7 @@ export default function App() {
     return sugerirFiscais[0];
   }, [sugerirFiscais]);
 
-  // Verifica se todos os fiscais elegíveis para esta postura estão sob quarentena
-  const todosAptosEmQuarentena = useMemo(() => {
-    const elegiveis = sugerirFiscais.filter(f => f.grupo !== 2);
-    return elegiveis.length > 0 && elegiveis.every(f => f.isBloqueado);
-  }, [sugerirFiscais]);
+
 
 
 
@@ -1310,16 +1269,9 @@ export default function App() {
 
                     {fiscalIndicado ? (
                       <div className="relative z-10">
-                        {todosAptosEmQuarentena ? (
-                          <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-xl mb-4 text-xs font-bold flex items-center gap-2">
-                            <AlertCircle size={16} className="text-red-400 shrink-0" />
-                            <span>⚠️ Descanso Geral: Todos os fiscais aptos trabalharam nos últimos 15 dias! Sugerindo o mais antigo.</span>
-                          </div>
-                        ) : (
-                          <p className="text-amber-400 text-[10px] font-bold uppercase mb-4 flex items-center gap-1.5 tracking-wider">
+                        <p className="text-amber-400 text-[10px] font-bold uppercase mb-4 flex items-center gap-1.5 tracking-wider">
                             <AlertCircle size={13} /> Fiscal mais indicado para {selectedPostura.nome}
                           </p>
-                        )}
                         <h3 className="text-2xl font-extrabold tracking-tight mb-1">{fiscalIndicado.nome}</h3>
                         <p className="text-slate-400 text-xs mb-4">
                           RF {fiscalIndicado.rf} • Total de comandos: {fiscalIndicado.totalGeral}
@@ -1336,7 +1288,7 @@ export default function App() {
                           </button>
 
                           <p className="text-[10px] text-center text-slate-400 leading-relaxed">
-                            Ao confirmar, o fiscal irá para o final da fila desta postura e entrará em descanso obrigatório nos próximos 15 dias.
+                            Ao confirmar, o fiscal irá para o final da fila desta postura.
                           </p>
                         </div>
                       </div>
