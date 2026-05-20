@@ -620,10 +620,8 @@ export default function App() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text("Prefeitura de São Paulo", 14, 26);
+      doc.text("Sub-Prefeitura da Penha", 14, 26);
 
-      const dataEmissao = new Date().toLocaleString('pt-BR');
-      doc.text(`Emitido em: ${dataEmissao}`, 14, 31);
 
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
