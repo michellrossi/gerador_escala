@@ -429,16 +429,14 @@ export default function App() {
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
           const isQuarentenado = statusBloqueio.isBloqueado;
 
-          // Definição de grupos de prioridade:
-          // Grupo 1: Apto (não bloqueado pela Postura) e NÃO quarentenado
-          // Grupo 2: Apto mas quarentenado (quarentena é ignorada se todos os elegíveis estiverem nela)
-          // Grupo 3: Bloqueado pela Postura (deve aguardar a rotação correspondente)
+          // Grupos de ordenação (apenas 2 grupos para manter a fila estável):
+          // Grupo 1: Elegível (apto ou quarentenado — quarentena é só visual, não muda posição)
+          // Grupo 2: Bloqueado pela Postura (já fez mais que o mínimo, deve aguardar rotação)
           let grupo = 1;
           let label = '';
 
           if (isPostureBlocked) {
-            grupo = 3;
-            // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
+            grupo = 2;
             const fiscaisAtras = activeFiscais.filter(other => {
               const otherStats = estatisticasFiscais[String(other.rf).trim()] || { porPostura: {}, totalGeral: 0 };
               const otherRealizacoes = (posturaId !== null ? otherStats.porPostura[posturaId] : 0) || 0;
@@ -446,7 +444,8 @@ export default function App() {
             }).length;
             label = `Aguard. ${fiscaisAtras} fisc.`;
           } else if (isQuarentenado) {
-            grupo = 2;
+            // Quarentena NÃO muda o grupo — continua grupo 1
+            // Apenas marca visualmente com o label de descanso
             label = statusBloqueio.label;
           }
 
@@ -463,32 +462,29 @@ export default function App() {
         });
 
       listMapeada.sort((a, b) => {
-        // 1º critério: grupo de prioridade (1, depois 2, depois 3)
+        // 1º critério: elegível (grupo 1) antes de bloqueado por postura (grupo 2)
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
-        // 2º critério: quem fez MENOS esta postura tem prioridade (garante rotação completa)
+        // 2º critério: quem fez MENOS esta postura tem prioridade
         if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
           return a.realizacoesDaPostura - b.realizacoesDaPostura;
         }
-        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final da fila
-        // Quem nunca fez (null) fica na frente. Isso garante que a fila continue
-        // a partir de onde parou, mesmo quando um fiscal travado é pulado.
+        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final
         const tA = a.ultimaEscalaDestaPostura || 0;
         const tB = b.ultimaEscalaDestaPostura || 0;
         if (tA !== tB) {
-          return tA - tB; // menor timestamp (mais antigo) = mais prioridade
+          return tA - tB;
         }
-        // 4º critério: desempate final pela ordem da lista mãe manual
+        // 4º critério: desempate pela ordem manual
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
-      // Se todos os aptos (grupo !== 3) estão sob quarentena (grupo === 2)
-      const aptos = listMapeada.filter(f => f.grupo !== 3);
-      const todosEmQuarentena = aptos.length > 0 && aptos.every(f => f.grupo === 2);
+      // Se todos os elegíveis estão quarentenados, promove o 1º visualmente
+      const elegiveis = listMapeada.filter(f => f.grupo !== 2);
+      const todosEmQuarentena = elegiveis.length > 0 && elegiveis.every(f => f.isBloqueado);
 
       if (todosEmQuarentena && listMapeada.length > 0) {
-        // Promove o 1º da fila (desbloqueia visualmente)
         listMapeada[0].isBloqueado = false;
         listMapeada[0].isBloqueadoLabel = '';
       }
@@ -509,10 +505,10 @@ export default function App() {
     return sugerirFiscais[0];
   }, [sugerirFiscais]);
 
-  // Verifica se todos os fiscais aptos para esta postura estão sob quarentena (grupo === 2)
+  // Verifica se todos os fiscais elegíveis para esta postura estão sob quarentena
   const todosAptosEmQuarentena = useMemo(() => {
-    const aptos = sugerirFiscais.filter(f => f.grupo !== 3);
-    return aptos.length > 0 && aptos.every(f => f.grupo === 2);
+    const elegiveis = sugerirFiscais.filter(f => f.grupo !== 2);
+    return elegiveis.length > 0 && elegiveis.every(f => f.isBloqueado);
   }, [sugerirFiscais]);
 
 
