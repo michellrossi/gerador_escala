@@ -96,6 +96,23 @@ const HORARIOS_30MIN = Array.from({ length: 48 }, (_, i) => {
   return `${h}:${m}`;
 });
 
+const mapearPosturaParaNomePadrao = (nome) => {
+  if (!nome) return '';
+  const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  
+  if (n.includes("veic")) return "veículos abandonados";
+  if (n.includes("feira")) return "feira livre";
+  if (n.includes("ambul")) return "ambulantes";
+  if (n.includes("funcionamento") || n.includes("1h")) return "funcionamento após 1h";
+  if (n.includes("17h") || n.includes("08h") || n.includes("8h")) {
+    if (n.includes("apos") || n.includes("pos")) {
+      return "atividade (após às 17h)";
+    }
+    return "atividade (08h às 17h)";
+  }
+  return n;
+};
+
 export default function App() {
   const [fiscais, setFiscais] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -321,7 +338,7 @@ export default function App() {
         ultimaEscala: null
       };
       POSTURAS.forEach(p => {
-        stats[rfStr].porPostura[p.nome.trim().toLowerCase()] = 0;
+        stats[rfStr].porPostura[mapearPosturaParaNomePadrao(p.nome)] = 0;
       });
     });
 
@@ -330,7 +347,7 @@ export default function App() {
       const rfStr = String(log.rf).trim();
       if (stats[rfStr]) {
         stats[rfStr].totalGeral += 1;
-        const posturaLog = String(log.postura).trim().toLowerCase();
+        const posturaLog = mapearPosturaParaNomePadrao(log.postura);
         if (stats[rfStr].porPostura[posturaLog] !== undefined) {
           stats[rfStr].porPostura[posturaLog] += 1;
         } else {
@@ -372,14 +389,14 @@ export default function App() {
       // Usamos apenas os ativos para evitar bloqueio total quando um fiscal de férias tem menos realizações.
       const realizacoesListAtivos = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-        return stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
+        return stats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
       });
       const minRealizacoes = realizacoesListAtivos.length > 0 ? Math.min(...realizacoesListAtivos) : 0;
 
       const listMapeada = activeFiscais
         .map(f => {
           const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
-          const realizacoesDaPostura = stats.porPostura[posturaNome.trim().toLowerCase()] || 0;
+          const realizacoesDaPostura = stats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
 
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
@@ -397,7 +414,7 @@ export default function App() {
             // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
             const fiscaisAtras = activeFiscais.filter(other => {
               const otherStats = estatisticasFiscais[String(other.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-              const otherRealizacoes = otherStats.porPostura[posturaNome.trim().toLowerCase()] || 0;
+              const otherRealizacoes = otherStats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
               return otherRealizacoes < realizacoesDaPostura;
             }).length;
             label = `Aguard. ${fiscaisAtras} fisc.`;
@@ -1503,7 +1520,7 @@ export default function App() {
                       <div className="space-y-2 border-t border-slate-100 pt-3">
                         <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-2.5">Comandos por Postura</p>
                         {POSTURAS.map(p => {
-                          const count = stats.porPostura[p.nome.trim().toLowerCase()] || 0;
+                          const count = stats.porPostura[mapearPosturaParaNomePadrao(p.nome)] || 0;
                           return (
                             <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-slate-100/50 last:border-b-0">
                               <div className="flex items-center gap-2 min-w-0">
