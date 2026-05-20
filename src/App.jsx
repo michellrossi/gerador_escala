@@ -96,21 +96,36 @@ const HORARIOS_30MIN = Array.from({ length: 48 }, (_, i) => {
   return `${h}:${m}`;
 });
 
-const mapearPosturaParaNomePadrao = (nome) => {
-  if (!nome) return '';
-  const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  
-  if (n.includes("veic")) return "veículos abandonados";
-  if (n.includes("feira")) return "feira livre";
-  if (n.includes("ambul")) return "ambulantes";
-  if (n.includes("funcionamento") || n.includes("1h")) return "funcionamento após 1h";
-  if (n.includes("17h") || n.includes("08h") || n.includes("8h")) {
-    if (n.includes("apos") || n.includes("pos")) {
-      return "atividade (após às 17h)";
-    }
-    return "atividade (08h às 17h)";
-  }
-  return n;
+// Remove acentos e converte para minúsculas para comparação
+const normStr = (s) => {
+  if (!s) return '';
+  return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+};
+
+// Encontra o ID da postura correspondente a um nome vindo do banco de dados
+// Usa correspondência flexível para lidar com variações históricas de nomenclatura
+const encontrarIdPostura = (nomeLog) => {
+  if (!nomeLog) return null;
+  const n = normStr(nomeLog);
+
+  // Tentativa 1: correspondência exata normalizada
+  const exato = POSTURAS.find(p => normStr(p.nome) === n);
+  if (exato) return exato.id;
+
+  // Tentativa 2: correspondência por palavras-chave
+  if (n.includes('veic')) return 1;
+  if (n.includes('feira')) return 2;
+  if (n.includes('ambul')) return 3;
+  if (n.includes('1h') || (n.includes('funcionamento') && n.includes('apos'))) return 4;
+  if (n.includes('08h') || n.includes('8h') || (n.includes('atividade') && (n.includes('dia') || n.includes('diur') || n.includes('17h') && !n.includes('apos')))) return 5;
+  if (n.includes('17h') && (n.includes('apos') || n.includes('pos') || n.includes('notur'))) return 6;
+  if (n.includes('atividade') && n.includes('17h')) return 6;
+
+  // Tentativa 3: substring do início do nome da postura cadastrada
+  const parcial = POSTURAS.find(p => n.includes(normStr(p.nome).split(' ')[0]));
+  if (parcial) return parcial.id;
+
+  return null;
 };
 
 export default function App() {
@@ -326,10 +341,11 @@ export default function App() {
   };
 
   // Mapeia o histórico em tempo real para contar quantas vezes cada fiscal fez cada postura
+  // Usa IDs numéricos como chaves para ser imune a variações de nomenclatura
   const estatisticasFiscais = useMemo(() => {
     const stats = {};
 
-    // Inicializa a estrutura para todos os fiscais
+    // Inicializa a estrutura para todos os fiscais com chaves por ID de postura
     fiscais.forEach(f => {
       const rfStr = String(f.rf).trim();
       stats[rfStr] = {
@@ -338,7 +354,7 @@ export default function App() {
         ultimaEscala: null
       };
       POSTURAS.forEach(p => {
-        stats[rfStr].porPostura[mapearPosturaParaNomePadrao(p.nome)] = 0;
+        stats[rfStr].porPostura[p.id] = 0;  // usa ID numerico como chave (imune a text)
       });
     });
 
@@ -347,11 +363,9 @@ export default function App() {
       const rfStr = String(log.rf).trim();
       if (stats[rfStr]) {
         stats[rfStr].totalGeral += 1;
-        const posturaLog = mapearPosturaParaNomePadrao(log.postura);
-        if (stats[rfStr].porPostura[posturaLog] !== undefined) {
-          stats[rfStr].porPostura[posturaLog] += 1;
-        } else {
-          stats[rfStr].porPostura[posturaLog] = 1;
+        const posturaId = encontrarIdPostura(log.postura);
+        if (posturaId !== null && stats[rfStr].porPostura[posturaId] !== undefined) {
+          stats[rfStr].porPostura[posturaId] += 1;
         }
 
         // Extrai o timestamp de forma ultra segura (suporta string ISO e Firestore Timestamp)
@@ -389,14 +403,16 @@ export default function App() {
       // Usamos apenas os ativos para evitar bloqueio total quando um fiscal de férias tem menos realizações.
       const realizacoesListAtivos = activeFiscais.map(f => {
         const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-        return stats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
+        const posturaId = encontrarIdPostura(posturaNome);
+        return (posturaId !== null ? stats.porPostura[posturaId] : 0) || 0;
       });
       const minRealizacoes = realizacoesListAtivos.length > 0 ? Math.min(...realizacoesListAtivos) : 0;
 
       const listMapeada = activeFiscais
         .map(f => {
           const stats = estatisticasFiscais[String(f.rf).trim()] || { porPostura: {}, totalGeral: 0, ultimaEscala: null };
-          const realizacoesDaPostura = stats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
+          const posturaId = encontrarIdPostura(posturaNome);
+          const realizacoesDaPostura = (posturaId !== null ? stats.porPostura[posturaId] : 0) || 0;
           const statusBloqueio = checkBloqueioDescanso(stats.ultimaEscala, dataReferencia);
 
           const isPostureBlocked = realizacoesDaPostura > minRealizacoes;
@@ -414,7 +430,7 @@ export default function App() {
             // Calcula quantos fiscais precisam fazer essa postura para alcançar este fiscal
             const fiscaisAtras = activeFiscais.filter(other => {
               const otherStats = estatisticasFiscais[String(other.rf).trim()] || { porPostura: {}, totalGeral: 0 };
-              const otherRealizacoes = otherStats.porPostura[mapearPosturaParaNomePadrao(posturaNome)] || 0;
+              const otherRealizacoes = (posturaId !== null ? otherStats.porPostura[posturaId] : 0) || 0;
               return otherRealizacoes < realizacoesDaPostura;
             }).length;
             label = `Aguard. ${fiscaisAtras} fisc.`;
@@ -1520,7 +1536,7 @@ export default function App() {
                       <div className="space-y-2 border-t border-slate-100 pt-3">
                         <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-2.5">Comandos por Postura</p>
                         {POSTURAS.map(p => {
-                          const count = stats.porPostura[mapearPosturaParaNomePadrao(p.nome)] || 0;
+                          const count = stats.porPostura[p.id] || 0;
                           return (
                             <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-slate-100/50 last:border-b-0">
                               <div className="flex items-center gap-2 min-w-0">
