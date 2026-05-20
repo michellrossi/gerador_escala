@@ -1081,13 +1081,13 @@ export default function App() {
                   <thead>
                     <tr className="bg-slate-50/30 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider border-b border-slate-100">
                       <th className="px-5 py-4 w-12 text-center">Mover</th>
-                      <th className="px-5 py-4">Fiscal / RF</th>
+                      <th className="px-5 py-4 text-left">Fiscal / RF</th>
 
                       <th
-                        className="px-5 py-4 cursor-pointer select-none hover:bg-slate-50/80 transition-colors group"
+                        className="px-5 py-4 cursor-pointer select-none hover:bg-slate-50/80 transition-colors group text-center"
                         onClick={handleToggleSort}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <span>Comandos Realizados</span>
                           <span className="text-slate-400 group-hover:text-slate-800 transition-colors">
                             {sortDirection === 'asc' && <ArrowUp size={14} className="text-amber-600" />}
@@ -1097,8 +1097,8 @@ export default function App() {
                         </div>
                       </th>
 
-                      <th className="px-5 py-4">Status Atual</th>
-                      <th className="px-5 py-4 text-right">Ações</th>
+                      <th className="px-5 py-4 text-center">Status Atual</th>
+                      <th className="px-5 py-4 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1132,13 +1132,13 @@ export default function App() {
                             <div className="text-xs text-slate-400">RF {fiscal.rf}</div>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-5 py-4 text-center">
                             <span className="text-sm font-extrabold text-slate-800 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
                               {estatisticasFiscais[String(fiscal.rf).trim()]?.totalGeral || 0} <span className="text-[10px] text-slate-400 font-semibold">comandos</span>
                             </span>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-5 py-4 text-center">
                             {(() => {
                               const hojeStr = new Date().toLocaleDateString('en-CA');
                               const deFeriasHoje = checkFiscalDeFerias(fiscal, hojeStr);
@@ -1176,8 +1176,8 @@ export default function App() {
                             })()}
                           </td>
 
-                          <td className="px-5 py-4 text-right">
-                            <div className="flex justify-end gap-2">
+                          <td className="px-5 py-4">
+                            <div className="flex justify-center gap-2">
                               {fiscal.feriasInicio && fiscal.feriasFim ? (
                                 <button
                                   onClick={() => handleLimparFerias(fiscal.id)}
