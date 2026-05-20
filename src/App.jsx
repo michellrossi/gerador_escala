@@ -434,14 +434,15 @@ export default function App() {
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
-        // 2º critério: quem fez MENOS esta postura tem prioridade (garante rotação completa)
-        // Um fiscal só pode repetir uma postura depois que TODOS os outros já passaram por ela.
-        if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
-          return a.realizacoesDaPostura - b.realizacoesDaPostura;
+        // 2º critério (LISTA GLOBAL): quem tem menos comandos no total vem primeiro.
+        // Esta é a prioridade máxima dentro dos aptos — garante que a lista global
+        // seja percorrida completamente antes de alguém repetir.
+        if (a.totalGeral !== b.totalGeral) {
+          return a.totalGeral - b.totalGeral;
         }
-        // 3º critério: ordem da lista global (aba Fiscais) — é a prioridade principal
-        // A cada rodada, a fila segue sempre a ordem manual estipulada na aba Fiscais,
-        // pulando os fiscais travados e continuando normalmente até completar a lista.
+        // 3º critério: desempate pela ordem manual da aba Fiscais.
+        // Quando dois fiscais têm o mesmo totalGeral, respeita a sequência definida
+        // manualmente — garante a ordem estipulada dentro de cada rodada.
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
