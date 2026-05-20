@@ -620,13 +620,14 @@ export default function App() {
       // Renderiza a imagem de cabeçalho (logo)
       // Largura da página A4 é 210mm. 2/4 da largura = 105mm.
       // Centro X = (210 - 105) / 2 = 52.5
-      doc.addImage(LOGO_BASE64, 'PNG', 52.5, 10, 105, 105);
+      // Altura ajustada para a proporção recortada: 36mm
+      doc.addImage(LOGO_BASE64, 'PNG', 52.5, 10, 105, 36);
 
       // Cabeçalho Principal do PDF (abaixo da logo)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.setTextColor(15, 23, 42); // Slate-900
-      doc.text("Relatório de Comandos Realizados", 105, 125, { align: "center" });
+      doc.text("Relatório de Comandos Realizados", 105, 56, { align: "center" });
 
       // Mês de referência escolhido pelo usuário
       doc.setFont("helvetica", "normal");
@@ -639,11 +640,11 @@ export default function App() {
         mesFiltro = `Mês de Referência: ${mesObj ? mesObj.nome : filtroMesHistorico}`;
       }
 
-      doc.text(mesFiltro, 105, 131, { align: "center" });
+      doc.text(mesFiltro, 105, 63, { align: "center" });
 
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.line(14, 135, 196, 135);
+      doc.line(14, 67, 196, 67);
 
       // Colunas e Dados da Tabela
       const colunas = ["Fiscal", "Postura Realizada", "Nome do Comando / Observação", "Data e Horário"];
@@ -663,7 +664,7 @@ export default function App() {
       autoTable(doc, {
         head: [colunas],
         body: linhas,
-        startY: 140,
+        startY: 72,
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 3 },
