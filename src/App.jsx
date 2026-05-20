@@ -622,7 +622,6 @@ export default function App() {
       doc.setTextColor(100);
       doc.text("Sub-Prefeitura da Penha", 14, 26);
 
-
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
       doc.line(14, 35, 196, 35);
@@ -989,8 +988,8 @@ export default function App() {
                           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{p.periodo} • {p.categoria}</span>
                         </div>
                       </div>
-                      <div className="p-3 divide-y divide-slate-100 flex-1 bg-slate-50/20">
-                        {fila.slice(0, 5).map((f, idx) => (
+                      <div className="p-3 divide-y divide-slate-100 flex-1 bg-slate-50/20 max-h-[220px] overflow-y-auto">
+                        {fila.map((f, idx) => (
                           <div key={f.id} className="py-2.5 flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2">
                               <span className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-[9px] ${f.isBloqueado ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-800'}`}>
