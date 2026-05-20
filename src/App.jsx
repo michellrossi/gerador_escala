@@ -618,57 +618,32 @@ export default function App() {
       const doc = new jsPDF();
 
       // Renderiza a imagem de cabeçalho (logo)
-      doc.addImage(LOGO_BASE64, 'PNG', 14, 8, 20, 20);
+      // Largura da página A4 é 210mm. 2/4 da largura = 105mm.
+      // Centro X = (210 - 105) / 2 = 52.5
+      doc.addImage(LOGO_BASE64, 'PNG', 52.5, 10, 105, 105);
 
-      // Cabeçalho Principal do PDF (ao lado da logo)
+      // Cabeçalho Principal do PDF (abaixo da logo)
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setTextColor(15, 23, 42); // Slate-900
-      doc.text("Relatório de Comandos Realizados", 38, 14);
+      doc.text("Relatório de Comandos Realizados", 105, 125, { align: "center" });
 
+      // Mês de referência escolhido pelo usuário
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text("Subprefeitura Penha", 38, 19);
 
-      const dataEmissao = new Date().toLocaleString('pt-BR');
-      doc.text(`Emitido em: ${dataEmissao}`, 38, 24);
+      let mesFiltro = "Mês de Referência: Todos";
+      if (filtroMesHistorico !== '') {
+        const mesObj = MESES.find(m => m.valor === filtroMesHistorico);
+        mesFiltro = `Mês de Referência: ${mesObj ? mesObj.nome : filtroMesHistorico}`;
+      }
+
+      doc.text(mesFiltro, 105, 131, { align: "center" });
 
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.line(14, 32, 196, 32);
-
-      // Informações sobre filtros ativos
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(71, 85, 105); // Slate-600
-      doc.text("Filtros Aplicados:", 14, 39);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-
-      const filtros = [];
-      if (filtroFiscalHistorico) {
-        const fiscalObj = fiscais.find(f => String(f.rf).trim() === filtroFiscalHistorico);
-        filtros.push(`Fiscal: ${fiscalObj ? fiscalObj.nome : filtroFiscalHistorico}`);
-      } else {
-        filtros.push("Fiscal: Todos");
-      }
-
-      if (filtroPosturaHistorico) {
-        filtros.push(`Postura: ${filtroPosturaHistorico}`);
-      } else {
-        filtros.push("Postura: Todas");
-      }
-
-      if (filtroMesHistorico !== '') {
-        const mesObj = MESES.find(m => m.valor === filtroMesHistorico);
-        filtros.push(`Mês: ${mesObj ? mesObj.nome : filtroMesHistorico}`);
-      } else {
-        filtros.push("Mês: Todos");
-      }
-
-      doc.text(filtros.join("   |   "), 14, 44);
+      doc.line(14, 135, 196, 135);
 
       // Colunas e Dados da Tabela
       const colunas = ["Fiscal", "Postura Realizada", "Nome do Comando / Observação", "Data e Horário"];
@@ -688,7 +663,7 @@ export default function App() {
       autoTable(doc, {
         head: [colunas],
         body: linhas,
-        startY: 50,
+        startY: 140,
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 3 },
