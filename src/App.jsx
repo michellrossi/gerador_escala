@@ -430,23 +430,18 @@ export default function App() {
         });
 
       listMapeada.sort((a, b) => {
-        // 1º critério: grupo de prioridade (1, depois 2, depois 3)
+        // 1º critério: grupo de prioridade (1 = apto, 3 = bloqueado por postura)
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
         // 2º critério: quem fez MENOS esta postura tem prioridade (garante rotação completa)
+        // Um fiscal só pode repetir uma postura depois que TODOS os outros já passaram por ela.
         if (a.realizacoesDaPostura !== b.realizacoesDaPostura) {
           return a.realizacoesDaPostura - b.realizacoesDaPostura;
         }
-        // 3º critério: quem trabalhou MAIS RECENTEMENTE nesta postura vai para o final da fila
-        // Quem nunca fez (null) fica na frente. Isso garante que a fila continue
-        // a partir de onde parou, mesmo quando um fiscal travado é pulado.
-        const tA = a.ultimaEscalaDestaPostura || 0;
-        const tB = b.ultimaEscalaDestaPostura || 0;
-        if (tA !== tB) {
-          return tA - tB; // menor timestamp (mais antigo) = mais prioridade
-        }
-        // 4º critério: desempate final pela ordem da lista mãe manual
+        // 3º critério: ordem da lista global (aba Fiscais) — é a prioridade principal
+        // A cada rodada, a fila segue sempre a ordem manual estipulada na aba Fiscais,
+        // pulando os fiscais travados e continuando normalmente até completar a lista.
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
