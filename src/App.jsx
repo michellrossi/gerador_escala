@@ -653,7 +653,7 @@ export default function App() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text("Sub-Prefeitura da Penha", 14, 26);
+      doc.text("Subprefeitura Penha", 14, 26);
 
       // Linha divisória
       doc.setDrawColor(226, 232, 240); // Slate-200
@@ -1902,7 +1902,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="fixed bottom-0 w-full bg-white border-t p-3 text-center text-[9px] text-slate-400 font-extrabold uppercase tracking-widest z-40">
-        Escalador Justo de Posturas • Prefeitura de São Paulo
+        Gerador de Escalas • Subprefeitura Penha
       </footer>
     </div>
   );
