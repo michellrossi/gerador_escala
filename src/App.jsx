@@ -685,6 +685,101 @@ export default function App() {
     }
   };
 
+  // Exportar backup completo em JSON
+  const exportarJSON = () => {
+    try {
+      const backupData = {
+        fiscais: fiscais,
+        historico: historico,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', `backup-firebase-${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+      showNotification("Backup JSON gerado e baixado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar backup JSON:", error);
+      showNotification("Erro ao exportar backup JSON.");
+    }
+  };
+
+  // Auxiliar para download de arquivos CSV
+  const baixarCSV = (dados, colunas, nomeArquivo) => {
+    let csvContent = '\uFEFF'; // UTF-8 BOM para abrir com acentuação correta no Excel
+    
+    // Linha de cabeçalho
+    csvContent += colunas.map(c => `"${c.label.replace(/"/g, '""')}"`).join(';') + '\r\n';
+    
+    // Linhas de dados
+    dados.forEach(row => {
+      const line = colunas.map(c => {
+        let val = row[c.key];
+        if (val === undefined || val === null) {
+          val = '';
+        }
+        if (c.isDate && val) {
+          try {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+              val = d.toLocaleString('pt-BR');
+            }
+          } catch(e) {}
+        }
+        const valStr = String(val).replace(/"/g, '""');
+        return `"${valStr}"`;
+      }).join(';');
+      csvContent += line + '\r\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', url);
+    downloadAnchor.setAttribute('download', `${nomeArquivo}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // Exportar backup completo em CSV (Gera 2 arquivos: fiscais e histórico)
+  const exportarCSV = () => {
+    try {
+      const colunasFiscais = [
+        { key: 'id', label: 'ID Firestore' },
+        { key: 'nome', label: 'Nome' },
+        { key: 'rf', label: 'Registro Funcional (RF)' },
+        { key: 'status', label: 'Status' },
+        { key: 'ordem', label: 'Ordem na Fila' },
+        { key: 'feriasInicio', label: 'Início Afastamento/Férias' },
+        { key: 'feriasFim', label: 'Fim Afastamento/Férias' }
+      ];
+      baixarCSV(fiscais, colunasFiscais, 'backup-fiscais');
+
+      const colunasHistorico = [
+        { key: 'id', label: 'ID Firestore' },
+        { key: 'fiscalNome', label: 'Fiscal' },
+        { key: 'rf', label: 'RF' },
+        { key: 'postura', label: 'Postura' },
+        { key: 'nomeComando', label: 'Nome do Comando' },
+        { key: 'data', label: 'Data/Hora do Comando', isDate: true },
+        { key: 'createdAt', label: 'Criado Em (Timestamp)' }
+      ];
+      baixarCSV(historico, colunasHistorico, 'backup-historico');
+
+      showNotification("Backups CSV gerados e baixados com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar backup CSV:", error);
+      showNotification("Erro ao exportar backup CSV.");
+    }
+  };
+
   // Adicionar um novo Fiscal no banco
   const handleAdicionarFiscal = async (e) => {
     e.preventDefault();
@@ -1438,6 +1533,24 @@ export default function App() {
                   Quadro de Produtividade dos Fiscais
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-semibold">Acompanhe a quantidade total de convocações por postura e a data do último comando de cada fiscal em tempo real.</p>
+              </div>
+              <div className="flex flex-wrap gap-2.5 shrink-0">
+                <button
+                  onClick={exportarJSON}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm uppercase tracking-wider cursor-pointer"
+                  title="Exportar todos os dados em formato JSON"
+                >
+                  <FileDown size={14} className="text-amber-500" />
+                  Backup JSON
+                </button>
+                <button
+                  onClick={exportarCSV}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm uppercase tracking-wider cursor-pointer"
+                  title="Exportar dados de Fiscais e Histórico em planilhas CSV"
+                >
+                  <FileDown size={14} className="text-amber-500" />
+                  Backup CSV
+                </button>
               </div>
             </div>
 
