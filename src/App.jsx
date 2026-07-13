@@ -437,15 +437,15 @@ export default function App() {
         if (a.grupo !== b.grupo) {
           return a.grupo - b.grupo;
         }
-        // 2º critério (LISTA GLOBAL): quem tem menos comandos no total vem primeiro.
-        // Esta é a prioridade máxima dentro dos aptos — garante que a lista global
-        // seja percorrida completamente antes de alguém repetir.
-        if (a.totalGeral !== b.totalGeral) {
-          return a.totalGeral - b.totalGeral;
+        // 2º critério (LISTA GLOBAL): quem trabalhou há mais tempo (ou nunca trabalhou) vem primeiro.
+        // Fiscais que nunca trabalharam (ultimaEscala = null) devem vir no topo (timestamp = 0).
+        const aTime = a.ultimaEscala ?? 0;
+        const bTime = b.ultimaEscala ?? 0;
+        if (aTime !== bTime) {
+          return aTime - bTime;
         }
         // 3º critério: desempate pela ordem manual da aba Fiscais.
-        // Quando dois fiscais têm o mesmo totalGeral, respeita a sequência definida
-        // manualmente — garante a ordem estipulada dentro de cada rodada.
+        // Quando dois fiscais têm o mesmo tempo de último comando (ex: ambos nunca trabalharam), respeita a sequência manual.
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
