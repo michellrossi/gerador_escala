@@ -185,6 +185,7 @@ export default function App() {
 
   // Estados de Modais Customizados
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, fiscal: null });
+  const [deleteHistoryModal, setDeleteHistoryModal] = useState({ isOpen: false, log: null });
   const [resetModal, setResetModal] = useState({ isOpen: false });
   const [addFiscalModalOpen, setAddFiscalModalOpen] = useState(false);
   const [confirmacaoModal, setConfirmacaoModal] = useState({ isOpen: false, fiscalId: null, postura: null, fiscalNome: '' });
@@ -831,6 +832,22 @@ export default function App() {
       showNotification("Fiscal removido definitivamente do banco.");
     } catch (e) {
       console.error("Erro ao deletar:", e);
+      showNotification("Erro ao excluir do banco de dados.");
+    }
+  };
+
+  // Remover Comando do Histórico
+  const confirmarExclusaoHistorico = async () => {
+    const logId = deleteHistoryModal.log?.id;
+    if (!user || !logId) return;
+
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'historico', logId);
+      await deleteDoc(docRef);
+      setDeleteHistoryModal({ isOpen: false, log: null });
+      showNotification("Comando excluído do histórico.");
+    } catch (e) {
+      console.error("Erro ao excluir comando:", e);
       showNotification("Erro ao excluir do banco de dados.");
     }
   };
@@ -1501,7 +1518,16 @@ export default function App() {
                   {historicoFiltrado.map(log => (
                     <div key={log.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/30">
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold text-[11px] sm:text-sm text-slate-800 truncate">{log.fiscalNome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-[11px] sm:text-sm text-slate-800 truncate">{log.fiscalNome}</p>
+                          <button
+                            onClick={() => setDeleteHistoryModal({ isOpen: true, log })}
+                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Excluir comando"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                         <p className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider truncate mt-0.5">
                           {log.postura} {log.nomeComando ? `• ${log.nomeComando}` : ''}
                         </p>
@@ -1660,6 +1686,45 @@ export default function App() {
               </button>
               <button
                 onClick={confirmarExclusaoFiscal}
+                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm shadow-red-100"
+              >
+                Confirmar Exclusão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CUSTOMIZADO: CONFIRMAR EXCLUSÃO DE COMANDO DO HISTÓRICO */}
+      {deleteHistoryModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                <AlertCircle className="text-red-500" size={20} />
+                Confirmar Exclusão de Comando
+              </h3>
+              <button
+                onClick={() => setDeleteHistoryModal({ isOpen: false, log: null })}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              Você tem certeza que deseja excluir o comando de <strong className="text-slate-800">{deleteHistoryModal.log?.fiscalNome}</strong> para a postura <strong className="text-slate-800">{deleteHistoryModal.log?.postura}</strong>? Esta ação não poderá ser desfeita e os cálculos do rodízio serão atualizados.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteHistoryModal({ isOpen: false, log: null })}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarExclusaoHistorico}
                 className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm shadow-red-100"
               >
                 Confirmar Exclusão
