@@ -443,9 +443,14 @@ export default function App() {
         if (a.totalGeral !== b.totalGeral) {
           return a.totalGeral - b.totalGeral;
         }
-        // 3º critério: desempate pela ordem manual da aba Fiscais.
-        // Quando dois fiscais têm o mesmo totalGeral, respeita a sequência definida
-        // manualmente — garante a ordem estipulada dentro de cada rodada.
+        // 3º critério: desempate pela data do último comando geral (mais antiga primeiro).
+        // Se o fiscal nunca foi escalado (null), tratamos como 0 (mais antigo possível).
+        const tempoA = a.ultimaEscala ?? 0;
+        const tempoB = b.ultimaEscala ?? 0;
+        if (tempoA !== tempoB) {
+          return tempoA - tempoB;
+        }
+        // 4º critério: desempate pela ordem manual da aba Fiscais (lista mestre).
         return (a.ordem ?? 0) - (b.ordem ?? 0);
       });
 
