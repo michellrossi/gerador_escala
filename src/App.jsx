@@ -169,6 +169,7 @@ export default function App() {
   // Form de Novo Fiscal
   const [novoNome, setNovoNome] = useState('');
   const [novoRF, setNovoRF] = useState('');
+  const [novoComandosIniciais, setNovoComandosIniciais] = useState('');
   const [formErro, setFormErro] = useState('');
 
   // Botão Desfazer Último Comando (Melhoria 2)
@@ -325,7 +326,7 @@ export default function App() {
     fiscais.forEach(f => {
       const rfStr = String(f.rf).trim();
       stats[rfStr] = {
-        totalGeral: 0,
+        totalGeral: Number(f.comandosIniciais || 0),
         porPostura: {},
         ultimaEscalaPorPostura: {},
         ultimaEscala: null
@@ -812,11 +813,13 @@ export default function App() {
         nome: novoNome.trim(),
         rf: novoRF.trim(),
         status: 'Ativo',
-        ordem: novaOrdem
+        ordem: novaOrdem,
+        comandosIniciais: Number(novoComandosIniciais) || 0
       });
 
       setNovoNome('');
       setNovoRF('');
+      setNovoComandosIniciais('');
       setAddFiscalModalOpen(false);
       showNotification("Novo fiscal cadastrado no banco!");
     } catch (e) {
@@ -1825,6 +1828,7 @@ export default function App() {
             setFormErro('');
             setNovoNome('');
             setNovoRF('');
+            setNovoComandosIniciais('');
             setAddFiscalModalOpen(true);
           }}
           className="fixed bottom-14 right-6 z-40 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-5 py-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2 border border-amber-400 group"
@@ -1874,6 +1878,18 @@ export default function App() {
                   placeholder="Ex: 7330871"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Comandos Iniciais</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={novoComandosIniciais}
+                  onChange={(e) => setNovoComandosIniciais(e.target.value)}
+                  placeholder="Ex: 5 (deixe 0 ou vazio se for novo)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 outline-none text-sm font-semibold transition-all bg-slate-50"
                 />
               </div>
 
